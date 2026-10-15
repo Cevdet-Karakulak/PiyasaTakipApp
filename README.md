@@ -209,10 +209,6 @@ npx wrangler deploy
 **Cevdet Karakulak**  
 *Junior Full Stack Developer*
 
-- 🌐 **GitHub:** [@Cevdet-Karakulak](https://github.com/Cevdet-Karakulak)
-- 💼 **Projeler:** [NexDrop](https://github.com/Cevdet-Karakulak/NexDrop) • [UKD Hesapla](https://github.com/Cevdet-Karakulak/ukd-hesapla) • [Tempo](https://github.com/Cevdet-Karakulak/tempo-chess-clock) • [Turvona](https://github.com/Cevdet-Karakulak/turvona) • [PiyasaRadarı](https://github.com/Cevdet-Karakulak/PiyasaTakipApp)
-- 📧 **Destek & Geri Bildirim:** `floppatechcorp@gmail.com`
-
 ---
 
 <p align="center">
