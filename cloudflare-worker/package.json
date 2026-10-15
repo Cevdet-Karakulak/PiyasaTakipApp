@@ -1,0 +1,14 @@
+{
+  "name": "finanspulse-yahoo-proxy",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker proxy for Yahoo Finance with 60s Edge Caching and CORS",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^3.80.0"
+  }
+}

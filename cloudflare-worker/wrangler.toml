@@ -1,0 +1,7 @@
+name = "finanspulse-yahoo-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+CACHE_TTL = "60"
