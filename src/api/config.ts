@@ -36,6 +36,9 @@ export const MARKET_CACHE_KEY = 'finanspulse:market-cache';
 /** Favori varlıklar için depolama anahtarı */
 export const FAVORITES_STORAGE_KEY = 'finanspulse:favorites';
 
+/** Portföy pozisyonları için depolama anahtarı */
+export const PORTFOLIO_STORAGE_KEY = 'finanspulse:portfolio';
+
 export const YAHOO_SYMBOLS: YahooSymbol[] = [
   'USDTRY=X',
   'EURTRY=X',
@@ -92,6 +95,14 @@ export const ASSET_DISPLAY_ORDER: MarketSymbol[] = [
   'PETKM.IS',
   'EKGYO.IS',
 ];
+
+/** Sabit/Varsayılan tanımlı tüm varlık sembolleri */
+export const DEFAULT_SYMBOLS: MarketSymbol[] = ASSET_DISPLAY_ORDER;
+
+/** Bir sembolün varsayılan sabit listede olup olmadığını kontrol eder */
+export function isDefaultSymbol(symbol: MarketSymbol): boolean {
+  return (DEFAULT_SYMBOLS as string[]).includes(symbol);
+}
 
 export const ASSETS: Record<MarketSymbol, AssetDefinition> = {
   'USDTRY=X': { symbol: 'USDTRY=X', name: 'Dolar / TL', shortName: 'USD/TRY', category: 'currency', currency: 'TRY', decimals: 4 },

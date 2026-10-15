@@ -70,11 +70,13 @@ export function useMarketData({ autoRefresh = true }: UseMarketDataOptions = {})
   const quotes = snapshot?.quotes ?? EMPTY_QUOTES;
   const getQuote = useCallback((symbol: MarketSymbol): MarketQuote | undefined => quotes[symbol], [quotes]);
   const addCustomQuote = useMarketStore((s) => s.addCustomQuote);
+  const removeCustomQuote = useMarketStore((s) => s.removeCustomQuote);
 
   return {
     quotes,
     getQuote,
     addCustomQuote,
+    removeCustomQuote,
     warnings: snapshot?.warnings ?? [],
     lastUpdated: lastFetchedAt ? new Date(lastFetchedAt) : null,
     isLoading: !hasHydrated || (status === 'loading' && !snapshot),

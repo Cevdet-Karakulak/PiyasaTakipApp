@@ -30,7 +30,7 @@ import { MarketTicker } from '@/components/MarketTicker';
 import { FintechTheme } from '@/constants/fintechTheme';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useFavoritesStore } from '@/store/favoritesStore';
-import type { MarketQuote } from '@/types/market';
+import type { MarketQuote, MarketSymbol } from '@/types/market';
 import { formatTime } from '@/utils/format';
 
 type FilterCategory = 'all' | 'gold_commodity' | 'currency' | 'stock' | 'energy' | 'favorites';
@@ -57,6 +57,7 @@ export default function MarketsScreen() {
 
   // Varlık listesini hazırla: Gram, Çeyrek ve Cumhuriyet altınları en üst sıralarda yer alır,
   // ardından kullanıcının favorilediği veya aradığı diğer dinamik BIST hisseleri eklenir.
+  // Favoriden çıkarılan ve aktif aranmayan özel hisseler listeden anında kaybolur.
   const assetList = useMemo(() => {
     const list: MarketQuote[] = [];
     const seen = new Set<string>();
@@ -68,15 +69,19 @@ export default function MarketsScreen() {
       }
     }
 
+    const isSearching = searchQuery.trim().length > 0;
     for (const [sym, quote] of Object.entries(quotes)) {
       if (!seen.has(sym) && quote) {
-        list.push(quote);
-        seen.add(sym);
+        const isFav = favorites.includes(sym as MarketSymbol);
+        if (isFav || isSearching) {
+          list.push(quote);
+          seen.add(sym);
+        }
       }
     }
 
     return list;
-  }, [quotes]);
+  }, [quotes, favorites, searchQuery]);
 
   // Dinamik BIST Hisse Arama: Listede olmayan hisseler (Örn: SASA, HEKTS, MIATK) Cloudflare Proxy üzerinden anlık çekilir
   useEffect(() => {

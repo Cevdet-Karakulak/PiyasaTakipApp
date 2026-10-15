@@ -15,10 +15,10 @@ import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 
-import { CACHE_TTL_MS, MARKET_CACHE_KEY, YAHOO_SYMBOLS } from '@/api/config';
+import { CACHE_TTL_MS, MARKET_CACHE_KEY, isDefaultSymbol } from '@/api/config';
 import { fetchMarketSnapshot } from '@/api/marketService';
-import { useFavoritesStore } from '@/store/favoritesStore';
-import type { MarketQuote, MarketSnapshot, YahooSymbol } from '@/types/market';
+import { onFavoriteRemoved, useFavoritesStore } from '@/store/favoritesStore';
+import type { MarketQuote, MarketSnapshot, MarketSymbol, YahooSymbol } from '@/types/market';
 
 export type FetchStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'error';
 
@@ -50,6 +50,7 @@ export interface MarketState extends PersistedState {
 
   fetchMarketData: (options?: FetchOptions) => Promise<FetchResult>;
   addCustomQuote: (quote: MarketQuote) => void;
+  removeCustomQuote: (symbol: MarketSymbol) => void;
   isCacheFresh: () => boolean;
   getCacheAgeMs: () => number;
   clearCache: () => Promise<void>;
@@ -123,20 +124,31 @@ export const useMarketStore = create<MarketState>()(
           set({ status: previous ? 'refreshing' : 'loading', error: null });
 
           try {
-            // Favorilerdeki veya önceki önbellekteki ek BIST hisselerini belirle
+            // Yalnızca kullanıcının favorilerinde kayıtlı olan ek BIST hisselerini belirle
             const favorites = useFavoritesStore.getState().favorites;
             const favCustomSymbols = favorites.filter(
               (sym): sym is YahooSymbol =>
-                typeof sym === 'string' && sym.endsWith('.IS') && !YAHOO_SYMBOLS.includes(sym as any),
+                typeof sym === 'string' && sym.endsWith('.IS') && !isDefaultSymbol(sym),
             );
-            const prevCustomSymbols = previous
-              ? (Object.keys(previous.quotes) as YahooSymbol[]).filter(
-                  (sym) => typeof sym === 'string' && sym.endsWith('.IS') && !YAHOO_SYMBOLS.includes(sym as any),
-                )
-              : [];
-            const customSymbols = Array.from(new Set([...favCustomSymbols, ...prevCustomSymbols]));
 
-            const snapshot = await fetchMarketSnapshot(previous, customSymbols);
+            // Artık favoride olmayan özel hisseleri önceki snapshot'tan da temizle
+            let cleanPrevious = previous;
+            if (previous) {
+              const prunedQuotes = { ...previous.quotes };
+              let modified = false;
+              for (const sym of Object.keys(prunedQuotes)) {
+                if (!isDefaultSymbol(sym as MarketSymbol) && !favorites.includes(sym as MarketSymbol)) {
+                  delete prunedQuotes[sym];
+                  modified = true;
+                }
+              }
+              if (modified) {
+                cleanPrevious = { ...previous, quotes: prunedQuotes };
+                set({ snapshot: cleanPrevious });
+              }
+            }
+
+            const snapshot = await fetchMarketSnapshot(cleanPrevious, favCustomSymbols);
             lastErrorAt = 0;
             set({ snapshot, lastFetchedAt: snapshot.fetchedAt, status: 'success', error: null });
             return { fromCache: false, snapshot, nextAllowedInMs: CACHE_TTL_MS };
@@ -176,6 +188,19 @@ export const useMarketStore = create<MarketState>()(
         });
       },
 
+      removeCustomQuote: (symbol: MarketSymbol) => {
+        const current = get().snapshot;
+        if (!current || !current.quotes[symbol]) return;
+        const newQuotes = { ...current.quotes };
+        delete newQuotes[symbol];
+        set({
+          snapshot: {
+            ...current,
+            quotes: newQuotes,
+          },
+        });
+      },
+
       clearCache: async () => {
         set({ snapshot: null, lastFetchedAt: 0, status: 'idle', error: null });
         await useMarketStore.persist.clearStorage();
@@ -187,6 +212,25 @@ export const useMarketStore = create<MarketState>()(
       storage: createJSONStorage(getStorage),
       // Sadece veri ve zaman damgası kalıcı; status/error gibi geçici alanlar değil.
       partialize: (s): PersistedState => ({ snapshot: s.snapshot, lastFetchedAt: s.lastFetchedAt }),
+      merge: (persistedState, currentState) => {
+        const pState = persistedState as PersistedState | undefined;
+        if (!pState || !pState.snapshot) {
+          return { ...currentState, snapshot: null, lastFetchedAt: 0 };
+        }
+        // Önbellekten yüklenirken, favorilerde olmayan özel hisseleri ayıkla
+        const favorites = useFavoritesStore.getState().favorites;
+        const cleanQuotes = { ...pState.snapshot.quotes };
+        for (const sym of Object.keys(cleanQuotes)) {
+          if (!isDefaultSymbol(sym as MarketSymbol) && !favorites.includes(sym as MarketSymbol)) {
+            delete cleanQuotes[sym];
+          }
+        }
+        return {
+          ...currentState,
+          snapshot: { ...pState.snapshot, quotes: cleanQuotes },
+          lastFetchedAt: pState.lastFetchedAt,
+        };
+      },
       // Şema değişirse eski önbelleği at (yeniden çekilir).
       migrate: () => ({ snapshot: null, lastFetchedAt: 0 }) as unknown as MarketState,
       onRehydrateStorage: () => () => {
@@ -195,6 +239,13 @@ export const useMarketStore = create<MarketState>()(
     },
   ),
 );
+
+// Favoriden çıkarılan özel hisseleri marketStore'dan anında sil
+onFavoriteRemoved((symbol) => {
+  if (!isDefaultSymbol(symbol)) {
+    useMarketStore.getState().removeCustomQuote(symbol);
+  }
+});
 
 /** Persist hidrasyonunu bekler; depolama hatasında takılmamak için zaman aşımı vardır. */
 function waitForHydration(): Promise<void> {

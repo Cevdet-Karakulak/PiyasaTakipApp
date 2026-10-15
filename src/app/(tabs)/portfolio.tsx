@@ -22,25 +22,13 @@ import { ASSETS } from '@/api/config';
 import { AssetIcon } from '@/components/AssetIcon';
 import { FintechTheme } from '@/constants/fintechTheme';
 import { useMarketData } from '@/hooks/useMarketData';
+import { usePortfolioStore } from '@/store/portfolioStore';
 import type { MarketSymbol } from '@/types/market';
 import { formatPercent, formatPrice } from '@/utils/format';
 
-interface PortfolioItem {
-  id: string;
-  symbol: MarketSymbol;
-  amount: number;
-}
-
-const DEFAULT_PORTFOLIO: PortfolioItem[] = [
-  { id: '1', symbol: 'GRAM_ALTIN', amount: 25 },
-  { id: '2', symbol: 'USDTRY=X', amount: 1500 },
-  { id: '3', symbol: 'THYAO.IS', amount: 80 },
-  { id: '4', symbol: 'GARAN.IS', amount: 120 },
-];
-
 export default function PortfolioScreen() {
   const { quotes } = useMarketData();
-  const [items, setItems] = useState<PortfolioItem[]>(DEFAULT_PORTFOLIO);
+  const { positions: items, addPosition, removePosition } = usePortfolioStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState<MarketSymbol>('GRAM_ALTIN');
   const [amountInput, setAmountInput] = useState('10');
@@ -80,20 +68,13 @@ export default function PortfolioScreen() {
     const parsed = parseFloat(amountInput.replace(',', '.'));
     if (!parsed || parsed <= 0) return;
 
-    setItems((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        symbol: selectedSymbol,
-        amount: parsed,
-      },
-    ]);
+    addPosition(selectedSymbol, parsed);
     setModalVisible(false);
     setAmountInput('10');
   };
 
   const handleDeleteItem = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    removePosition(id);
   };
 
   const isUp = totalChange >= 0;
