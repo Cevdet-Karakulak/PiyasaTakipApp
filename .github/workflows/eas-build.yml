@@ -12,7 +12,6 @@ on:
 
 jobs:
   build:
-    # iOS için ücretsiz Mac sunucusu, Android için Ubuntu sunucusu seçilir
     runs-on: ${{ github.event.inputs.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
     
     steps:
@@ -22,7 +21,7 @@ jobs:
       - name: Node.js Kurulumu
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x # Deprecation hatasını ve yarn çökmesini çözer
 
       - name: Expo ve EAS CLI Kurulumu
         uses: expo/expo-github-action@v8
@@ -31,8 +30,8 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Paketleri Yükle
-        run: npm install
+        # Loglarda yarn hatası verdiği için npm yerine yarn kullanıyoruz
+        run: yarn install
 
       - name: Uygulamayı Derle (Expo Kotası Harcamaz)
-        # --local parametresi sayesinde derleme Expo'da değil GitHub'da yapılır
         run: eas build --platform ${{ github.event.inputs.platform }} --profile production --non-interactive --local
