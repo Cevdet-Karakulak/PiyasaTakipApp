@@ -8,9 +8,11 @@
     "scheme": "piyasaradari",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.cevdet.piyasaradari",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.cevdet.piyasaradari",
       "adaptiveIcon": {
         "backgroundColor": "#0B0E14",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
