@@ -9,10 +9,18 @@ on:
         options:
           - ios
           - android
+      build_number:
+        description: 'App Store / Play Store için yeni ve benzersiz bir derleme (build) numarası girin (Örn: 3, 4, 5)'
+        required: true
+        type: string
 
 jobs:
   build:
     runs-on: ${{ github.event.inputs.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_NO_VCS: '1' # EAS'in Git senkronizasyon hataları vermesini engeller
+      BUILD_NUM: ${{ inputs.build_number }}
     
     steps:
       - name: Kodu Çek
@@ -21,20 +29,41 @@ jobs:
       - name: Node.js Kurulumu
         uses: actions/setup-node@v4
         with:
-          node-version: 24.x # Uyarıları ortadan kaldırır
+          node-version: 20
 
       - name: Paketleri Yükle
         run: npm install
 
+      - name: Build Numarasını app.json İçine Enjekte Et
+        # Bu adım, girdiğiniz build numarasını app.json dosyasına otomatik yazar.
+        # Turvona'daki scripts/prepare-local-build.cjs dosyasının yaptığı işi yapar.
+        run: |
+          node -e "
+          const fs = require('fs');
+          const file = 'app.json';
+          if (fs.existsSync(file)) {
+            const config = JSON.parse(fs.readFileSync(file));
+            const buildNum = process.env.BUILD_NUM;
+            if (config.expo) {
+              if (!config.expo.ios) config.expo.ios = {};
+              config.expo.ios.buildNumber = buildNum;
+              
+              if (!config.expo.android) config.expo.android = {};
+              config.expo.android.versionCode = parseInt(buildNum) || 1;
+            }
+            fs.writeFileSync(file, JSON.stringify(config, null, 2));
+            console.log('Build number başarıyla şuna güncellendi:', buildNum);
+          } else {
+            console.log('app.json bulunamadı, app.config.js kullanıyorsanız bu adımı yoksayın.');
+          }
+          "
+
       - name: Uygulamayı Derle (Expo Kotası Harcamaz)
-        # Çıktıyı doğrudan uygulamanın ana dizinine PiyasaRadari.ipa veya .aab olarak kaydeder
         run: npx --yes eas-cli@latest build --platform ${{ github.event.inputs.platform }} --profile production --non-interactive --local --output ./PiyasaRadari.${{ github.event.inputs.platform == 'ios' && 'ipa' || 'aab' }}
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Üretilen Dosyayı GitHub'a Yükle (Artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: PiyasaRadari-${{ github.event.inputs.platform }}
+          name: PiyasaRadari-${{ github.event.inputs.platform }}-${{ inputs.build_number }}
           path: ./PiyasaRadari.*
           retention-days: 3
