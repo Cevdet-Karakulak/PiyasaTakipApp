@@ -5,7 +5,7 @@ import { ArrowDownRight, ArrowUpRight, Star } from 'lucide-react-native';
 import { ASSETS } from '@/api/config';
 import { AssetIcon } from '@/components/AssetIcon';
 import { MiniSparkline } from '@/components/MiniSparkline';
-import { FintechTheme } from '@/constants/fintechTheme';
+import { FintechTheme, useThemeColors } from '@/constants/fintechTheme';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import type { MarketQuote } from '@/types/market';
 import { formatPercent, formatPrice, getTrend } from '@/utils/format';
@@ -17,6 +17,7 @@ interface AssetCardProps {
 
 export const AssetCard: React.FC<AssetCardProps> = ({ quote, onPress }) => {
   const { isFavorite, toggleFavorite } = useFavoritesStore();
+  const colors = useThemeColors();
   const favorited = isFavorite(quote.symbol);
   const trend = getTrend(quote.changePercent);
   const isUp = trend === 'up';
@@ -26,20 +27,30 @@ export const AssetCard: React.FC<AssetCardProps> = ({ quote, onPress }) => {
   const decimals = assetDef?.decimals ?? (quote.price >= 1000 ? 2 : 2);
 
   const badgeBg = isUp
-    ? FintechTheme.colors.upSoft
+    ? colors.upSoft
     : isDown
-    ? FintechTheme.colors.downSoft
+    ? colors.downSoft
     : 'rgba(148, 163, 184, 0.12)';
 
   const badgeColor = isUp
-    ? FintechTheme.colors.up
+    ? colors.up
     : isDown
-    ? FintechTheme.colors.down
-    : FintechTheme.colors.neutral;
+    ? colors.down
+    : colors.neutral;
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        },
+        pressed && {
+          backgroundColor: colors.surfaceHighlight,
+          borderColor: colors.borderLight,
+        },
+      ]}
       onPress={onPress}
     >
       {/* Sol: İkon Rozeti + Sembol ve Başlık */}
@@ -49,7 +60,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({ quote, onPress }) => {
         <View style={styles.textContainer}>
           <View style={styles.symbolRow}>
             <Text
-              style={styles.symbolText}
+              style={[styles.symbolText, { color: colors.text }]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.75}
@@ -57,13 +68,13 @@ export const AssetCard: React.FC<AssetCardProps> = ({ quote, onPress }) => {
               {quote.shortName}
             </Text>
             {quote.isStale && (
-              <View style={styles.staleTag}>
-                <Text style={styles.staleTagText}>Eski</Text>
+              <View style={[styles.staleTag, { backgroundColor: colors.goldSoft }]}>
+                <Text style={[styles.staleTagText, { color: colors.gold }]}>Eski</Text>
               </View>
             )}
           </View>
           <Text
-            style={styles.nameText}
+            style={[styles.nameText, { color: colors.textMuted }]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.8}
@@ -91,7 +102,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({ quote, onPress }) => {
       <View style={styles.rightSection}>
         <View style={styles.priceContainer}>
           <Text
-            style={styles.priceText}
+            style={[styles.priceText, { color: colors.text }]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.75}
@@ -119,8 +130,8 @@ export const AssetCard: React.FC<AssetCardProps> = ({ quote, onPress }) => {
         >
           <Star
             size={18}
-            color={favorited ? FintechTheme.colors.gold : FintechTheme.colors.borderLight}
-            fill={favorited ? FintechTheme.colors.gold : 'transparent'}
+            color={favorited ? colors.gold : colors.borderLight}
+            fill={favorited ? colors.gold : 'transparent'}
           />
         </Pressable>
       </View>
@@ -133,17 +144,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: FintechTheme.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.border,
-  },
-  cardPressed: {
-    backgroundColor: FintechTheme.colors.surfaceHighlight,
-    borderColor: FintechTheme.colors.borderLight,
   },
   leftSection: {
     flexDirection: 'row',
@@ -163,23 +168,19 @@ const styles = StyleSheet.create({
   symbolText: {
     fontSize: 15,
     fontWeight: '700',
-    color: FintechTheme.colors.text,
     letterSpacing: 0.2,
   },
   staleTag: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
   },
   staleTagText: {
-    color: FintechTheme.colors.gold,
     fontSize: 10,
     fontWeight: '600',
   },
   nameText: {
     fontSize: 12,
-    color: FintechTheme.colors.textMuted,
   },
   chartSection: {
     alignItems: 'center',
@@ -199,24 +200,23 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 15,
     fontWeight: '700',
-    color: FintechTheme.colors.text,
+    marginBottom: 4,
     ...FintechTheme.typography.tabularNums,
-    marginBottom: 3,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2.5,
     borderRadius: 6,
     gap: 2,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     ...FintechTheme.typography.tabularNums,
   },
   starButton: {
-    padding: 4,
+    padding: 2,
   },
 });

@@ -6,17 +6,17 @@ import {
   Fuel,
   Newspaper,
   PieChart,
-  Settings,
   TrendingUp,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FintechTheme } from '@/constants/fintechTheme';
+import { useThemeColors } from '@/constants/fintechTheme';
 import { useTranslation } from '@/store/preferencesStore';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const colors = useThemeColors();
 
   // Home Indicator çizgisiyle çakışmayı önlemek için güvenli alt boşluk
   const bottomInset = insets.bottom > 0 ? insets.bottom + 8 : Platform.OS === 'ios' ? 32 : 18;
@@ -27,8 +27,8 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: FintechTheme.colors.backgroundSecondary,
-          borderTopColor: FintechTheme.colors.border,
+          backgroundColor: colors.backgroundSecondary,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           height: tabHeight,
           paddingTop: 8,
@@ -36,13 +36,13 @@ export default function TabsLayout() {
           elevation: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -3 },
-          shadowOpacity: 0.3,
+          shadowOpacity: 0.15,
           shadowRadius: 5,
         },
-        tabBarActiveTintColor: FintechTheme.colors.accent,
-        tabBarInactiveTintColor: FintechTheme.colors.textMuted,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: '600',
           marginTop: 2,
         },
@@ -96,10 +96,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: t('Ayarlar'),
-          tabBarIcon: ({ color, size }) => (
-            <Settings size={size ?? 22} color={color} strokeWidth={2.2} />
-          ),
+          href: null, // Alt menüde yer kaplamaz, üst barlardaki ayarlar ikonundan açılır
         }}
       />
     </Tabs>

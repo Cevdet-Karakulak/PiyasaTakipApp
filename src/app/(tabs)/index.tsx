@@ -12,10 +12,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import {
   Clock,
   RefreshCw,
   Search,
+  Settings,
   ShieldCheck,
   Star,
   X,
@@ -27,7 +29,7 @@ import { fetchYahooQuote } from '@/api/marketService';
 import { AssetCard } from '@/components/AssetCard';
 import { AssetDetailModal } from '@/components/AssetDetailModal';
 import { MarketTicker } from '@/components/MarketTicker';
-import { FintechTheme } from '@/constants/fintechTheme';
+import { FintechTheme, useThemeColors } from '@/constants/fintechTheme';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import type { MarketQuote, MarketSymbol } from '@/types/market';
@@ -47,6 +49,7 @@ const CATEGORIES: { id: FilterCategory; label: string }[] = [
 export default function MarketsScreen() {
   const { quotes, isLoading, isRefreshing, lastUpdated, refresh, addCustomQuote } = useMarketData();
   const { favorites } = useFavoritesStore();
+  const colors = useThemeColors();
 
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,25 +101,23 @@ export default function MarketsScreen() {
       setIsSearchingOnline(true);
       try {
         const quote = await fetchYahooQuote(candidateSymbol);
-        if (quote && quote.price > 0) {
+        if (quote) {
           addCustomQuote(quote);
         }
-      } catch {
-        // Hata durumunda sessizce yakala
+      } catch (e) {
+        console.warn('Dinamik hisse arama sonucu bulunamadı:', candidateSymbol, e);
       } finally {
         setIsSearchingOnline(false);
       }
     }, 450);
 
-    return () => {
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, [searchQuery, quotes, addCustomQuote]);
 
-  // Filtreleme ve arama mantığı
+  // Arama ve kategori filtreleme
   const filteredAssets = useMemo(() => {
-    const isSearching = searchQuery.trim().length > 0;
-    const query = searchQuery.toLowerCase().trim();
+    const query = searchQuery.trim().toLowerCase();
+    const isSearching = query.length > 0;
 
     const filtered = assetList.filter((item) => {
       // 1. Kategori filtresi: Arama kutusu boşken kategoriyi filtrele;
@@ -171,49 +172,71 @@ export default function MarketsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       {/* Üst Bar / Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.logoRow}>
             <View style={styles.pulseDot} />
-            <Text style={styles.appTitle}>PiyasaRadarı</Text>
-            <View style={styles.liveTag}>
-              <Zap size={10} color={FintechTheme.colors.accent} fill={FintechTheme.colors.accent} />
-              <Text style={styles.liveTagText}>CANLI</Text>
+            <Text style={[styles.appTitle, { color: colors.text }]}>PiyasaRadarı</Text>
+            <View style={[styles.liveTag, { backgroundColor: colors.accentSoft }]}>
+              <Zap size={10} color={colors.accent} fill={colors.accent} />
+              <Text style={[styles.liveTagText, { color: colors.accent }]}>CANLI</Text>
             </View>
           </View>
 
           {/* Güncelleme & Smart Cache Bilgisi */}
           <View style={styles.cacheInfoRow}>
-            <ShieldCheck size={12} color={FintechTheme.colors.up} />
-            <Text style={styles.cacheInfoText}>60s Smart Cache</Text>
-            <Text style={styles.dotSeparator}>•</Text>
-            <Clock size={11} color={FintechTheme.colors.textMuted} />
-            <Text style={styles.updateTimeText}>
+            <ShieldCheck size={12} color={colors.up} />
+            <Text style={[styles.cacheInfoText, { color: colors.up }]}>60s Smart Cache</Text>
+            <Text style={[styles.dotSeparator, { color: colors.textMuted }]}>•</Text>
+            <Clock size={11} color={colors.textMuted} />
+            <Text style={[styles.updateTimeText, { color: colors.textMuted }]}>
               {lastUpdated ? `Uygulama Güncelleme: ${formatTime(lastUpdated)}` : 'Yükleniyor...'}
             </Text>
           </View>
         </View>
 
-        <Pressable
-          onPress={handleRefresh}
-          disabled={isRefreshing}
-          style={({ pressed }) => [styles.refreshButton, pressed && styles.refreshPressed]}
-        >
-          {isRefreshing ? (
-            <ActivityIndicator size="small" color={FintechTheme.colors.accent} />
-          ) : (
-            <RefreshCw size={18} color={FintechTheme.colors.text} />
-          )}
-        </Pressable>
+        {/* Sağ Üst Aksiyonlar: Yenile ve Ayarlar */}
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={handleRefresh}
+            disabled={isRefreshing}
+            style={({ pressed }) => [
+              styles.headerIconButton,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              pressed && { backgroundColor: colors.surfaceHighlight, opacity: 0.8 },
+            ]}
+            accessibilityLabel="Yenile"
+            accessibilityRole="button"
+          >
+            {isRefreshing ? (
+              <ActivityIndicator size="small" color={colors.accent} />
+            ) : (
+              <RefreshCw size={17} color={colors.text} />
+            )}
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push('/(tabs)/settings')}
+            style={({ pressed }) => [
+              styles.headerIconButton,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              pressed && { backgroundColor: colors.surfaceHighlight, opacity: 0.8 },
+            ]}
+            accessibilityLabel="Ayarlar"
+            accessibilityRole="button"
+          >
+            <Settings size={18} color={colors.text} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Smart Cache Bildirim Banner'ı */}
       {cacheNotice && (
-        <View style={styles.noticeBanner}>
-          <ShieldCheck size={14} color={FintechTheme.colors.accent} />
-          <Text style={styles.noticeBannerText}>{cacheNotice}</Text>
+        <View style={[styles.noticeBanner, { backgroundColor: colors.accentSoft }]}>
+          <ShieldCheck size={14} color={colors.accent} />
+          <Text style={[styles.noticeBannerText, { color: colors.text }]}>{cacheNotice}</Text>
         </View>
       )}
 
@@ -221,22 +244,22 @@ export default function MarketsScreen() {
       <MarketTicker quotes={quotes} onSelectSymbol={handleCardPress} />
 
       {/* Arama Çubuğu */}
-      <View style={styles.searchContainer}>
-        <Search size={16} color={FintechTheme.colors.textMuted} style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Search size={16} color={colors.textMuted} style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="Varlık veya BIST hissesi ara (SASA, HEKTS, Altın...)"
-          placeholderTextColor={FintechTheme.colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
           clearButtonMode="while-editing"
           autoCapitalize="characters"
         />
         {isSearchingOnline ? (
-          <ActivityIndicator size="small" color={FintechTheme.colors.accent} style={{ marginRight: 4 }} />
+          <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 4 }} />
         ) : searchQuery.length > 0 && Platform.OS !== 'ios' ? (
           <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-            <X size={16} color={FintechTheme.colors.textMuted} />
+            <X size={16} color={colors.textMuted} />
           </Pressable>
         ) : null}
       </View>
@@ -244,8 +267,8 @@ export default function MarketsScreen() {
       {/* Çevrim İçi BIST Tarama Bildirimi */}
       {isSearchingOnline && (
         <View style={styles.searchNoticeRow}>
-          <ActivityIndicator size="small" color={FintechTheme.colors.accent} />
-          <Text style={styles.searchNoticeText}>
+          <ActivityIndicator size="small" color={colors.accent} />
+          <Text style={[styles.searchNoticeText, { color: colors.accent }]}>
             Borsa İstanbul taranıyor: {searchQuery.trim().toUpperCase()}.IS...
           </Text>
         </View>
@@ -263,21 +286,30 @@ export default function MarketsScreen() {
             return (
               <Pressable
                 key={cat.id}
-                style={[styles.categoryPill, isSelected && styles.categoryPillActive]}
+                style={[
+                  styles.categoryPill,
+                  {
+                    backgroundColor: isSelected ? colors.accent : colors.surface,
+                    borderColor: isSelected ? colors.accent : colors.border,
+                  },
+                ]}
                 onPress={() => setSelectedCategory(cat.id)}
               >
                 {cat.id === 'favorites' && (
                   <Star
                     size={12}
-                    color={isSelected ? '#FFFFFF' : FintechTheme.colors.gold}
-                    fill={isSelected ? '#FFFFFF' : FintechTheme.colors.gold}
+                    color={isSelected ? '#FFFFFF' : colors.gold}
+                    fill={isSelected ? '#FFFFFF' : colors.gold}
                     style={{ marginRight: 4 }}
                   />
                 )}
                 <Text
                   style={[
                     styles.categoryPillText,
-                    isSelected && styles.categoryPillTextActive,
+                    {
+                      color: isSelected ? '#FFFFFF' : colors.textMuted,
+                      fontWeight: isSelected ? '700' : '600',
+                    },
                   ]}
                 >
                   {cat.label}
@@ -291,8 +323,8 @@ export default function MarketsScreen() {
       {/* Varlık Listesi */}
       {isLoading && assetList.length === 0 ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={FintechTheme.colors.accent} />
-          <Text style={styles.loadingMessage}>Piyasa verileri alınıyor...</Text>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingMessage, { color: colors.textMuted }]}>Piyasa verileri alınıyor...</Text>
         </View>
       ) : (
         <FlatList
@@ -307,16 +339,16 @@ export default function MarketsScreen() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor={FintechTheme.colors.accent}
-              colors={[FintechTheme.colors.accent]}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>
                 {isSearchingOnline ? 'BIST Taranıyor...' : 'Sonuç Bulunamadı'}
               </Text>
-              <Text style={styles.emptySub}>
+              <Text style={[styles.emptySub, { color: colors.textMuted }]}>
                 {isSearchingOnline
                   ? `"${searchQuery.trim().toUpperCase()}" için Borsa İstanbul'dan canlı veri çekiliyor...`
                   : searchQuery
@@ -344,7 +376,6 @@ export default function MarketsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: FintechTheme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -357,6 +388,19 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -366,25 +410,22 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: FintechTheme.colors.up,
+    backgroundColor: '#00C076',
   },
   appTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: FintechTheme.colors.text,
     letterSpacing: -0.5,
   },
   liveTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: FintechTheme.colors.accentSoft,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
     gap: 3,
   },
   liveTagText: {
-    color: FintechTheme.colors.accent,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -397,35 +438,18 @@ const styles = StyleSheet.create({
   },
   cacheInfoText: {
     fontSize: 11,
-    color: FintechTheme.colors.up,
     fontWeight: '600',
   },
   dotSeparator: {
-    color: FintechTheme.colors.textMuted,
     fontSize: 10,
   },
   updateTimeText: {
     fontSize: 11,
-    color: FintechTheme.colors.textMuted,
     ...FintechTheme.typography.tabularNums,
-  },
-  refreshButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: FintechTheme.colors.surface,
-    borderWidth: 1,
-    borderColor: FintechTheme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  refreshPressed: {
-    backgroundColor: FintechTheme.colors.surfaceHighlight,
   },
   noticeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: FintechTheme.colors.accentSoft,
     paddingVertical: 8,
     paddingHorizontal: 16,
     marginHorizontal: 16,
@@ -434,7 +458,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   noticeBannerText: {
-    color: FintechTheme.colors.text,
     fontSize: 12,
     fontWeight: '600',
     flex: 1,
@@ -442,13 +465,11 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: FintechTheme.colors.surface,
     marginHorizontal: 16,
     marginVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.border,
     height: 42,
   },
   searchIcon: {
@@ -456,7 +477,6 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: FintechTheme.colors.text,
     fontSize: 14,
     paddingVertical: 0,
   },
@@ -470,7 +490,6 @@ const styles = StyleSheet.create({
   },
   searchNoticeText: {
     fontSize: 12,
-    color: FintechTheme.colors.accent,
     fontWeight: '600',
   },
   categoryScrollContainer: {
@@ -483,25 +502,13 @@ const styles = StyleSheet.create({
   categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: FintechTheme.colors.surface,
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.border,
-  },
-  categoryPillActive: {
-    backgroundColor: FintechTheme.colors.accent,
-    borderColor: FintechTheme.colors.accent,
   },
   categoryPillText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: FintechTheme.colors.textMuted,
-  },
-  categoryPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
   listContent: {
     paddingHorizontal: 16,
@@ -514,7 +521,6 @@ const styles = StyleSheet.create({
     paddingTop: 80,
   },
   loadingMessage: {
-    color: FintechTheme.colors.textMuted,
     fontSize: 13,
     marginTop: 12,
   },
@@ -526,12 +532,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: FintechTheme.colors.text,
     marginBottom: 4,
   },
   emptySub: {
     fontSize: 13,
-    color: FintechTheme.colors.textMuted,
     textAlign: 'center',
   },
 });

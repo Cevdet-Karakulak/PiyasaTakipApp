@@ -12,8 +12,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import {
   AlertTriangle,
+  ArrowLeft,
   Check,
   ChevronRight,
   Globe,
@@ -29,7 +31,7 @@ import {
   X,
 } from 'lucide-react-native';
 
-import { FintechTheme } from '@/constants/fintechTheme';
+import { useThemeColors } from '@/constants/fintechTheme';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import { useMarketStore } from '@/store/marketStore';
 import { usePortfolioStore } from '@/store/portfolioStore';
@@ -39,6 +41,7 @@ type SheetType = 'language' | 'theme' | 'about' | 'disclaimer' | 'privacy' | 're
 
 export default function SettingsScreen() {
   const { t, language, theme, setLanguage, setTheme } = useTranslation();
+  const colors = useThemeColors();
   const [sheet, setSheet] = useState<SheetType>(null);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -80,9 +83,9 @@ export default function SettingsScreen() {
   const handleContactSupport = () => {
     const subject = encodeURIComponent('PiyasaRadarı Destek / Geri Bildirim');
     const body = encodeURIComponent(
-      `Merhaba,\n\nUygulama Sürümü: 1.0.0\nCihaz: ${Platform.OS}\n\nGörüş veya sorununuz:\n`
+      `Merhaba FloppaTech Ekibi,\n\nUygulama: PiyasaRadarı v1.0.0\nCihaz: ${Platform.OS}\n\nGörüş veya sorununuz:\n`
     );
-    Linking.openURL(`mailto:destek@piyasaradari.com?subject=${subject}&body=${body}`);
+    Linking.openURL(`mailto:destek@floppatech.com?subject=${subject}&body=${body}`);
   };
 
   const handleClearCache = async () => {
@@ -124,41 +127,70 @@ export default function SettingsScreen() {
         style={({ pressed }) => [
           styles.rowCard,
           {
+            backgroundColor: colors.surface,
             opacity: pressed ? 0.75 : 1,
           },
         ]}
       >
-        <View style={styles.iconContainer}>{icon}</View>
+        <View
+          style={[
+            styles.iconContainer,
+            {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.borderLight,
+            },
+          ]}
+        >
+          {icon}
+        </View>
         <View style={styles.rowTextContainer}>
-          <Text style={styles.rowTitle} numberOfLines={1}>
+          <Text style={[styles.rowTitle, { color: colors.text }]} numberOfLines={1}>
             {t(title)}
           </Text>
-          <Text style={styles.rowSubtitle} numberOfLines={1}>
+          <Text style={[styles.rowSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
             {t(subtitle)}
           </Text>
         </View>
         {valueBadge ? (
           <View style={styles.valueBadge}>
-            <Text style={styles.valueBadgeText}>{valueBadge}</Text>
-            <ChevronRight size={18} color={FintechTheme.colors.textMuted} />
+            <Text style={[styles.valueBadgeText, { color: colors.accent }]}>{valueBadge}</Text>
+            <ChevronRight size={18} color={colors.textMuted} />
           </View>
         ) : (
-          <ChevronRight size={18} color={FintechTheme.colors.textMuted} />
+          <ChevronRight size={18} color={colors.textMuted} />
         )}
       </Pressable>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Üst Başlık */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>{t('Ayarlar')}</Text>
-          <Text style={styles.headerSubtitle}>{t('Tercihler')}</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Üst Başlık & Geri Dönüş */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View style={styles.headerLeftGroup}>
+          <Pressable
+            onPress={() => router.back()}
+            style={[
+              styles.backButton,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            hitSlop={8}
+            accessibilityLabel="Geri"
+          >
+            <ArrowLeft size={20} color={colors.text} />
+          </Pressable>
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('Ayarlar')}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>{t('Tercihler')}</Text>
+          </View>
         </View>
-        <View style={styles.versionPill}>
-          <Text style={styles.versionPillText}>v1.0.0</Text>
+        <View
+          style={[
+            styles.versionPill,
+            { backgroundColor: colors.surfaceHighlight, borderColor: colors.borderLight },
+          ]}
+        >
+          <Text style={[styles.versionPillText, { color: colors.accent }]}>v1.0.0</Text>
         </View>
       </View>
 
@@ -168,21 +200,26 @@ export default function SettingsScreen() {
       >
         {/* Bölüm: Tercihler */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>{t('Tercihler')}</Text>
-          <View style={styles.cardGroup}>
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>{t('Tercihler')}</Text>
+          <View
+            style={[
+              styles.cardGroup,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             {settingRow(
-              <Globe size={22} color={FintechTheme.colors.accent} />,
+              <Globe size={22} color={colors.accent} />,
               'Dil',
               language === 'tr' ? 'Türkçe' : 'English',
               () => setSheet('language'),
               language === 'tr' ? '🇹🇷 TR' : '🇬🇧 EN'
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             {settingRow(
               theme === 'dark' ? (
-                <Moon size={22} color={FintechTheme.colors.stock} />
+                <Moon size={22} color={colors.stock} />
               ) : (
-                <Sun size={22} color={FintechTheme.colors.gold} />
+                <Sun size={22} color={colors.gold} />
               ),
               'Görünüm',
               theme === 'dark' ? 'Koyu' : 'Açık',
@@ -194,26 +231,31 @@ export default function SettingsScreen() {
 
         {/* Bölüm: Destek ve Paylaşım */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>{t('Destek ve paylaşım')}</Text>
-          <View style={styles.cardGroup}>
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>{t('Destek ve paylaşım')}</Text>
+          <View
+            style={[
+              styles.cardGroup,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             {settingRow(
-              <Share2 size={22} color={FintechTheme.colors.up} />,
+              <Share2 size={22} color={colors.up} />,
               'Paylaş',
               "PiyasaRadarı'nı arkadaşlarınla paylaş",
               handleShare
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             {settingRow(
-              <Star size={22} color={FintechTheme.colors.gold} />,
+              <Star size={22} color={colors.gold} />,
               'Uygulamayı puanla',
               Platform.OS === 'android'
                 ? 'Google Play’de görüşünü paylaş'
                 : 'App Store’da görüşünü paylaş',
               handleRateApp
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             {settingRow(
-              <Mail size={22} color={FintechTheme.colors.energy} />,
+              <Mail size={22} color={colors.energy} />,
               'Destek',
               'Geliştirici ile iletişime geç',
               handleContactSupport
@@ -223,24 +265,29 @@ export default function SettingsScreen() {
 
         {/* Bölüm: Uygulama */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>{t('Uygulama')}</Text>
-          <View style={styles.cardGroup}>
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>{t('Uygulama')}</Text>
+          <View
+            style={[
+              styles.cardGroup,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             {settingRow(
-              <Info size={22} color={FintechTheme.colors.accent} />,
+              <Info size={22} color={colors.accent} />,
               'Hakkında',
               'PiyasaRadarı · 1.0.0',
               () => setSheet('about')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             {settingRow(
-              <AlertTriangle size={22} color={FintechTheme.colors.gold} />,
+              <AlertTriangle size={22} color={colors.gold} />,
               'Yasal uyarı ve kaynaklar',
               'BIST 15dk gecikme ve lisans bilgisi',
               () => setSheet('disclaimer')
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             {settingRow(
-              <Shield size={22} color={FintechTheme.colors.up} />,
+              <Shield size={22} color={colors.up} />,
               'Gizlilik bilgisi',
               'Cihaz kayıtları ve veri kullanımı',
               () => setSheet('privacy')
@@ -250,21 +297,26 @@ export default function SettingsScreen() {
 
         {/* Bölüm: Veri ve Önbellek */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>{t('Veri ve önbellek')}</Text>
-          <View style={styles.cardGroup}>
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>{t('Veri ve önbellek')}</Text>
+          <View
+            style={[
+              styles.cardGroup,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             {settingRow(
               <RefreshCw
                 size={22}
-                color={FintechTheme.colors.accent}
+                color={colors.accent}
                 style={isClearing ? { opacity: 0.5 } : undefined}
               />,
               'Önbelleği temizle',
               'Piyasa verileri önbelleği yenilensin',
               handleClearCache
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             {settingRow(
-              <Trash2 size={22} color={FintechTheme.colors.down} />,
+              <Trash2 size={22} color={colors.down} />,
               'Verilerimi sıfırla',
               'Favorileri ve portföy kayıtlarını kaldır',
               () => setSheet('reset')
@@ -274,9 +326,12 @@ export default function SettingsScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerBrand}>PiyasaRadarı</Text>
-          <Text style={styles.footerText}>
-            © 2026 Cevdet Karakulak · {t('Tüm hakları saklıdır.')}
+          <Text style={[styles.footerBrand, { color: colors.textSecondary }]}>PiyasaRadarı</Text>
+          <Text style={[styles.footerText, { color: colors.textMuted }]}>
+            Geliştirici: FloppaTech & Efe Kaan Karakulak
+          </Text>
+          <Text style={[styles.footerText, { color: colors.textMuted, fontSize: 11 }]}>
+            © 2026 FloppaTech & Efe Kaan Karakulak · {t('Tüm hakları saklıdır.')}
           </Text>
         </View>
       </ScrollView>
@@ -291,18 +346,24 @@ export default function SettingsScreen() {
         onRequestClose={() => setSheet(null)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setSheet(null)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderLight },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
-                <Globe size={22} color={FintechTheme.colors.accent} />
-                <Text style={styles.modalTitle}>{t('Dil')}</Text>
+                <Globe size={22} color={colors.accent} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('Dil')}</Text>
               </View>
               <Pressable
                 onPress={() => setSheet(null)}
-                style={styles.modalCloseButton}
+                style={[styles.modalCloseButton, { backgroundColor: colors.backgroundSecondary }]}
                 hitSlop={8}
               >
-                <X size={20} color={FintechTheme.colors.textMuted} />
+                <X size={20} color={colors.textMuted} />
               </Pressable>
             </View>
 
@@ -310,7 +371,11 @@ export default function SettingsScreen() {
               <Pressable
                 style={[
                   styles.optionItem,
-                  language === 'tr' && styles.optionItemActive,
+                  {
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: language === 'tr' ? colors.accent : colors.border,
+                  },
+                  language === 'tr' && { backgroundColor: colors.surfaceHighlight },
                 ]}
                 onPress={() => {
                   setLanguage('tr');
@@ -320,19 +385,23 @@ export default function SettingsScreen() {
                 <View style={styles.optionTextRow}>
                   <Text style={styles.flagEmoji}>🇹🇷</Text>
                   <View>
-                    <Text style={styles.optionTitle}>Türkçe</Text>
-                    <Text style={styles.optionSubtitle}>Varsayılan sistem dili</Text>
+                    <Text style={[styles.optionTitle, { color: colors.text }]}>Türkçe</Text>
+                    <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
+                      Varsayılan sistem dili
+                    </Text>
                   </View>
                 </View>
-                {language === 'tr' && (
-                  <Check size={20} color={FintechTheme.colors.accent} />
-                )}
+                {language === 'tr' && <Check size={20} color={colors.accent} />}
               </Pressable>
 
               <Pressable
                 style={[
                   styles.optionItem,
-                  language === 'en' && styles.optionItemActive,
+                  {
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: language === 'en' ? colors.accent : colors.border,
+                  },
+                  language === 'en' && { backgroundColor: colors.surfaceHighlight },
                 ]}
                 onPress={() => {
                   setLanguage('en');
@@ -342,13 +411,13 @@ export default function SettingsScreen() {
                 <View style={styles.optionTextRow}>
                   <Text style={styles.flagEmoji}>🇬🇧</Text>
                   <View>
-                    <Text style={styles.optionTitle}>English</Text>
-                    <Text style={styles.optionSubtitle}>Global language support</Text>
+                    <Text style={[styles.optionTitle, { color: colors.text }]}>English</Text>
+                    <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
+                      Global language support
+                    </Text>
                   </View>
                 </View>
-                {language === 'en' && (
-                  <Check size={20} color={FintechTheme.colors.accent} />
-                )}
+                {language === 'en' && <Check size={20} color={colors.accent} />}
               </Pressable>
             </View>
           </Pressable>
@@ -363,18 +432,24 @@ export default function SettingsScreen() {
         onRequestClose={() => setSheet(null)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setSheet(null)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderLight },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
-                <Moon size={22} color={FintechTheme.colors.stock} />
-                <Text style={styles.modalTitle}>{t('Görünüm')}</Text>
+                <Moon size={22} color={colors.stock} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('Görünüm')}</Text>
               </View>
               <Pressable
                 onPress={() => setSheet(null)}
-                style={styles.modalCloseButton}
+                style={[styles.modalCloseButton, { backgroundColor: colors.backgroundSecondary }]}
                 hitSlop={8}
               >
-                <X size={20} color={FintechTheme.colors.textMuted} />
+                <X size={20} color={colors.textMuted} />
               </Pressable>
             </View>
 
@@ -382,7 +457,11 @@ export default function SettingsScreen() {
               <Pressable
                 style={[
                   styles.optionItem,
-                  theme === 'dark' && styles.optionItemActive,
+                  {
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: theme === 'dark' ? colors.accent : colors.border,
+                  },
+                  theme === 'dark' && { backgroundColor: colors.surfaceHighlight },
                 ]}
                 onPress={() => {
                   setTheme('dark');
@@ -390,21 +469,25 @@ export default function SettingsScreen() {
                 }}
               >
                 <View style={styles.optionTextRow}>
-                  <Moon size={20} color={FintechTheme.colors.stock} />
+                  <Moon size={20} color={colors.stock} />
                   <View>
-                    <Text style={styles.optionTitle}>{t('Koyu')}</Text>
-                    <Text style={styles.optionSubtitle}>Fintech Dark Theme</Text>
+                    <Text style={[styles.optionTitle, { color: colors.text }]}>{t('Koyu')}</Text>
+                    <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
+                      Fintech Koyu Tema
+                    </Text>
                   </View>
                 </View>
-                {theme === 'dark' && (
-                  <Check size={20} color={FintechTheme.colors.accent} />
-                )}
+                {theme === 'dark' && <Check size={20} color={colors.accent} />}
               </Pressable>
 
               <Pressable
                 style={[
                   styles.optionItem,
-                  theme === 'light' && styles.optionItemActive,
+                  {
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: theme === 'light' ? colors.accent : colors.border,
+                  },
+                  theme === 'light' && { backgroundColor: colors.surfaceHighlight },
                 ]}
                 onPress={() => {
                   setTheme('light');
@@ -412,22 +495,22 @@ export default function SettingsScreen() {
                 }}
               >
                 <View style={styles.optionTextRow}>
-                  <Sun size={20} color={FintechTheme.colors.gold} />
+                  <Sun size={20} color={colors.gold} />
                   <View>
-                    <Text style={styles.optionTitle}>{t('Açık')}</Text>
-                    <Text style={styles.optionSubtitle}>Light Theme</Text>
+                    <Text style={[styles.optionTitle, { color: colors.text }]}>{t('Açık')}</Text>
+                    <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
+                      Açık Aydınlık Tema
+                    </Text>
                   </View>
                 </View>
-                {theme === 'light' && (
-                  <Check size={20} color={FintechTheme.colors.accent} />
-                )}
+                {theme === 'light' && <Check size={20} color={colors.accent} />}
               </Pressable>
             </View>
           </Pressable>
         </Pressable>
       </Modal>
 
-      {/* 3. HAKKINDA MODALI */}
+      {/* 3. HAKKINDA MODALI (Altyapı/Proxy'den bahsedilmez, temiz kurumsal bilgi) */}
       <Modal
         visible={sheet === 'about'}
         transparent
@@ -435,40 +518,75 @@ export default function SettingsScreen() {
         onRequestClose={() => setSheet(null)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setSheet(null)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderLight },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
-                <Info size={22} color={FintechTheme.colors.accent} />
-                <Text style={styles.modalTitle}>{t('PiyasaRadarı Hakkında')}</Text>
+                <Info size={22} color={colors.accent} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                  {t('PiyasaRadarı Hakkında')}
+                </Text>
               </View>
               <Pressable
                 onPress={() => setSheet(null)}
-                style={styles.modalCloseButton}
+                style={[styles.modalCloseButton, { backgroundColor: colors.backgroundSecondary }]}
                 hitSlop={8}
               >
-                <X size={20} color={FintechTheme.colors.textMuted} />
+                <X size={20} color={colors.textMuted} />
               </Pressable>
             </View>
 
-            <ScrollView style={{ maxHeight: 340 }}>
-              <Text style={styles.modalParagraph}>
+            <ScrollView style={{ maxHeight: 360 }}>
+              <Text style={[styles.modalParagraph, { color: colors.textSecondary }]}>
                 {t(
                   'PiyasaRadarı; Borsa İstanbul (BIST), döviz kurları, altın ve kıymetli madenler, kripto para ile güncel akaryakıt fiyatlarını tek ekrandan anlık ve gecikmesiz olarak takip etmenizi sağlayan yeni nesil bir finans takip uygulamasıdır.'
                 )}
               </Text>
-              <View style={styles.infoBadgeBox}>
-                <Text style={styles.infoBadgeTitle}>Mimarisi</Text>
-                <Text style={styles.infoBadgeText}>
-                  Cloudflare Worker Edge Caching · Yahoo Finance API · Offline First Zustand & AsyncStorage
+
+              <View
+                style={[
+                  styles.infoBadgeBox,
+                  { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                ]}
+              >
+                <Text style={[styles.infoBadgeTitle, { color: colors.accent }]}>Geliştirici</Text>
+                <Text style={[styles.infoBadgeText, { color: colors.text }]}>
+                  FloppaTech & Efe Kaan Karakulak
                 </Text>
               </View>
-              <Text style={[styles.modalParagraph, { marginTop: 12 }]}>
-                {t('Geliştirici')}: Cevdet Karakulak
-              </Text>
+
+              <View
+                style={[
+                  styles.infoBadgeBox,
+                  { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                ]}
+              >
+                <Text style={[styles.infoBadgeTitle, { color: colors.accent }]}>Sürüm & Lisans</Text>
+                <Text style={[styles.infoBadgeText, { color: colors.text }]}>
+                  PiyasaRadarı 1.0.0 (Mobil Sürüm)
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.infoBadgeBox,
+                  { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                ]}
+              >
+                <Text style={[styles.infoBadgeTitle, { color: colors.accent }]}>İletişim & Destek</Text>
+                <Text style={[styles.infoBadgeText, { color: colors.text }]}>
+                  destek@floppatech.com
+                </Text>
+              </View>
             </ScrollView>
 
             <Pressable
-              style={styles.modalActionPrimary}
+              style={[styles.modalActionPrimary, { backgroundColor: colors.accent }]}
               onPress={() => setSheet(null)}
             >
               <Text style={styles.modalActionPrimaryText}>{t('Kapat')}</Text>
@@ -485,23 +603,29 @@ export default function SettingsScreen() {
         onRequestClose={() => setSheet(null)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setSheet(null)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderLight },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
-                <AlertTriangle size={22} color={FintechTheme.colors.gold} />
-                <Text style={styles.modalTitle}>{t('Yasal Uyarı')}</Text>
+                <AlertTriangle size={22} color={colors.gold} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('Yasal Uyarı')}</Text>
               </View>
               <Pressable
                 onPress={() => setSheet(null)}
-                style={styles.modalCloseButton}
+                style={[styles.modalCloseButton, { backgroundColor: colors.backgroundSecondary }]}
                 hitSlop={8}
               >
-                <X size={20} color={FintechTheme.colors.textMuted} />
+                <X size={20} color={colors.textMuted} />
               </Pressable>
             </View>
 
-            <ScrollView style={{ maxHeight: 320 }}>
-              <Text style={styles.modalParagraph}>
+            <ScrollView style={{ maxHeight: 340 }}>
+              <Text style={[styles.modalParagraph, { color: colors.textSecondary }]}>
                 {t(
                   'Uygulamada yer alan tüm borsa, döviz, emtia ve haber verileri bilgilendirme amaçlıdır. Yatırım tavsiyesi niteliğinde değildir. BIST verileri yasal düzenlemeler gereği 15 dakika gecikmeli olarak sunulmaktadır. Finansal kararlar almadan önce lütfen yetkili yatırım danışmanlarına başvurunuz.'
                 )}
@@ -509,7 +633,7 @@ export default function SettingsScreen() {
             </ScrollView>
 
             <Pressable
-              style={styles.modalActionPrimary}
+              style={[styles.modalActionPrimary, { backgroundColor: colors.accent }]}
               onPress={() => setSheet(null)}
             >
               <Text style={styles.modalActionPrimaryText}>{t('Kapat')}</Text>
@@ -518,7 +642,7 @@ export default function SettingsScreen() {
         </Pressable>
       </Modal>
 
-      {/* 5. GİZLİLİK MODALI */}
+      {/* 5. GİZLİLİK POLİTİKASI MODALI (Uzun ve Detaylı Resmi Metin) */}
       <Modal
         visible={sheet === 'privacy'}
         transparent
@@ -526,29 +650,91 @@ export default function SettingsScreen() {
         onRequestClose={() => setSheet(null)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setSheet(null)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderLight, maxHeight: '82%' },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
-                <Shield size={22} color={FintechTheme.colors.up} />
-                <Text style={styles.modalTitle}>{t('Gizlilik bilgisi')}</Text>
+                <Shield size={22} color={colors.up} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('Gizlilik bilgisi')}</Text>
               </View>
               <Pressable
                 onPress={() => setSheet(null)}
-                style={styles.modalCloseButton}
+                style={[styles.modalCloseButton, { backgroundColor: colors.backgroundSecondary }]}
                 hitSlop={8}
               >
-                <X size={20} color={FintechTheme.colors.textMuted} />
+                <X size={20} color={colors.textMuted} />
               </Pressable>
             </View>
 
-            <ScrollView style={{ maxHeight: 320 }}>
-              <Text style={styles.modalParagraph}>
-                PiyasaRadarı uygulamasında herhangi bir kullanıcı hesabı veya giriş zorunluluğu yoktur. Portföy varlıklarınız ve favori hisseleriniz yalnızca cihazınızın kendi hafızasında (AsyncStorage) şifrelenmiş olarak saklanır. Hiçbir kişisel veri üçüncü şahıslara veya harici sunuculara aktarılmaz.
+            <ScrollView style={{ flexGrow: 1 }} showsVerticalScrollIndicator={true}>
+              <Text style={[styles.policyHeading, { color: colors.text }]}>
+                PiyasaRadarı Gizlilik Politikası
+              </Text>
+              <Text style={[styles.policyMeta, { color: colors.textMuted }]}>
+                Son Güncelleme Tarihi: 15 Ekim 2026
+              </Text>
+
+              <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+                {'FloppaTech & Efe Kaan Karakulak ("Geliştirici"), PiyasaRadarı uygulamasını ("Uygulama") ücretsiz bir hizmet olarak sunmaktadır. Bu HİZMET, Geliştirici tarafından ücretsiz olarak sağlanır ve olduğu gibi kullanılması amaçlanmıştır.'}
+              </Text>
+
+              <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+                Bu sayfa, Uygulamayı kullanan ziyaretçileri, kişisel bilgilerin toplanması, kullanılması ve ifşa edilmesiyle ilgili politikalarımız hakkında bilgilendirmek için kullanılmaktadır.
+              </Text>
+
+              <Text style={[styles.policySubheading, { color: colors.text }]}>
+                Bilgi Toplama ve Kullanım
+              </Text>
+              <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+                Daha iyi bir deneyim için Uygulamamızı kullanırken, bize belirli kişisel olarak tanımlanabilir bilgileri sağlamanızı isteyebiliriz. Ancak, PiyasaRadarı uygulaması temel işlevlerini yerine getirirken kullanıcıların kişisel verilerini (ad, soyad, telefon, TC kimlik numarası vb.) sunucularında toplamaz, saklamaz veya üçüncü şahıslarla paylaşmaz.
+              </Text>
+              <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+                {"Uygulama, kullanıcının cihazında yerel olarak çalışan ve dış servislere (API'lere) yalnızca anlık veri çekmek amacıyla bağlanan bir yapıya sahiptir."}
+              </Text>
+
+              <Text style={[styles.policySubheading, { color: colors.text }]}>
+                Üçüncü Taraf Hizmetleri
+              </Text>
+              <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+                Uygulama, sizi tanımlamak için kullanılan bilgileri toplayabilen üçüncü taraf hizmetlerini (örneğin; Google Play Hizmetleri, analitik veya hata raporlama araçları) kullanabilir. Bu kurumların kendi gizlilik politikaları bulunmaktadır.
+              </Text>
+
+              <Text style={[styles.policySubheading, { color: colors.text }]}>
+                Güvenlik
+              </Text>
+              <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+                Bize sağladığınız (varsa) bilgilerin güvenliğine değer veriyoruz. Ancak, internet üzerinden hiçbir aktarım yönteminin veya elektronik depolama yönteminin %100 güvenli ve güvenilir olmadığını ve mutlak güvenliğini garanti edemeyeceğimizi unutmayın.
+              </Text>
+
+              <Text style={[styles.policySubheading, { color: colors.text }]}>
+                Çocukların Gizliliği
+              </Text>
+              <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+                Bu Hizmetler 13 yaşın altındaki kişilere hitap etmez. 13 yaşın altındaki çocuklardan bilerek kişisel olarak tanımlanabilir bilgiler toplamıyoruz.
+              </Text>
+
+              <Text style={[styles.policySubheading, { color: colors.text }]}>
+                Bu Gizlilik Politikasındaki Değişiklikler
+              </Text>
+              <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+                Gizlilik Politikamızı zaman zaman güncelleyebiliriz. Bu nedenle, herhangi bir değişiklik için bu sayfayı periyodik olarak gözden geçirmeniz önerilir. Yeni Gizlilik Politikasını bu sayfada yayınlayarak herhangi bir değişiklikten sizi haberdar edeceğiz.
+              </Text>
+
+              <Text style={[styles.policySubheading, { color: colors.text }]}>
+                Bize Ulaşın
+              </Text>
+              <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+                {"Gizlilik Politikamız hakkında herhangi bir sorunuz veya öneriniz varsa, bizimle iletişime geçmekten çekinmeyin:\nE-posta: destek@floppatech.com"}
               </Text>
             </ScrollView>
 
             <Pressable
-              style={styles.modalActionPrimary}
+              style={[styles.modalActionPrimary, { backgroundColor: colors.accent, marginTop: 14 }]}
               onPress={() => setSheet(null)}
             >
               <Text style={styles.modalActionPrimaryText}>{t('Kapat')}</Text>
@@ -565,24 +751,30 @@ export default function SettingsScreen() {
         onRequestClose={() => setSheet(null)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setSheet(null)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderLight },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
-                <Trash2 size={22} color={FintechTheme.colors.down} />
-                <Text style={[styles.modalTitle, { color: FintechTheme.colors.down }]}>
+                <Trash2 size={22} color={colors.down} />
+                <Text style={[styles.modalTitle, { color: colors.down }]}>
                   {t('Verileri Sıfırla')}
                 </Text>
               </View>
               <Pressable
                 onPress={() => setSheet(null)}
-                style={styles.modalCloseButton}
+                style={[styles.modalCloseButton, { backgroundColor: colors.backgroundSecondary }]}
                 hitSlop={8}
               >
-                <X size={20} color={FintechTheme.colors.textMuted} />
+                <X size={20} color={colors.textMuted} />
               </Pressable>
             </View>
 
-            <Text style={styles.modalParagraph}>
+            <Text style={[styles.modalParagraph, { color: colors.textSecondary }]}>
               {t(
                 'Tüm favorileriniz, özel aranan hisseleriniz ve portföy varlıklarınız cihazınızdan silinecektir. Bu işlem geri alınamaz. Emin misiniz?'
               )}
@@ -590,13 +782,16 @@ export default function SettingsScreen() {
 
             <View style={styles.modalButtonGroup}>
               <Pressable
-                style={styles.modalActionCancel}
+                style={[
+                  styles.modalActionCancel,
+                  { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                ]}
                 onPress={() => setSheet(null)}
               >
-                <Text style={styles.modalActionCancelText}>{t('İptal')}</Text>
+                <Text style={[styles.modalActionCancelText, { color: colors.text }]}>{t('İptal')}</Text>
               </Pressable>
               <Pressable
-                style={styles.modalActionDanger}
+                style={[styles.modalActionDanger, { backgroundColor: colors.down }]}
                 onPress={handleResetData}
               >
                 <Text style={styles.modalActionDangerText}>{t('Sıfırla')}</Text>
@@ -612,41 +807,47 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: FintechTheme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: FintechTheme.colors.border,
+  },
+  headerLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
-    color: FintechTheme.colors.text,
     letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: FintechTheme.colors.textMuted,
-    marginTop: 2,
+    fontSize: 12.5,
+    marginTop: 1,
   },
   versionPill: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
-    backgroundColor: FintechTheme.colors.surfaceHighlight,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.borderLight,
   },
   versionPillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: FintechTheme.colors.accent,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -658,18 +859,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionHeader: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
-    color: FintechTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     paddingHorizontal: 4,
   },
   cardGroup: {
-    backgroundColor: FintechTheme.colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.border,
     overflow: 'hidden',
   },
   rowCard: {
@@ -680,16 +878,13 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: FintechTheme.colors.border,
     marginLeft: 70,
   },
   iconContainer: {
     width: 42,
     height: 42,
     borderRadius: 12,
-    backgroundColor: FintechTheme.colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -700,11 +895,9 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: FintechTheme.colors.text,
   },
   rowSubtitle: {
     fontSize: 12.5,
-    color: FintechTheme.colors.textMuted,
   },
   valueBadge: {
     flexDirection: 'row',
@@ -714,7 +907,6 @@ const styles = StyleSheet.create({
   valueBadgeText: {
     fontSize: 13,
     fontWeight: '600',
-    color: FintechTheme.colors.accent,
   },
   footer: {
     alignItems: 'center',
@@ -726,12 +918,10 @@ const styles = StyleSheet.create({
   footerBrand: {
     fontSize: 14,
     fontWeight: '800',
-    color: FintechTheme.colors.textSecondary,
     letterSpacing: 0.5,
   },
   footerText: {
     fontSize: 12,
-    color: FintechTheme.colors.textMuted,
   },
   // Modallar
   modalBackdrop: {
@@ -744,14 +934,12 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: FintechTheme.colors.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.borderLight,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
   },
@@ -769,12 +957,10 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: FintechTheme.colors.text,
   },
   modalCloseButton: {
     padding: 4,
     borderRadius: 8,
-    backgroundColor: FintechTheme.colors.backgroundSecondary,
   },
   optionList: {
     gap: 10,
@@ -785,13 +971,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 14,
     borderRadius: 14,
-    backgroundColor: FintechTheme.colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.border,
-  },
-  optionItemActive: {
-    borderColor: FintechTheme.colors.accent,
-    backgroundColor: FintechTheme.colors.surfaceHighlight,
   },
   optionTextRow: {
     flexDirection: 'row',
@@ -804,42 +984,57 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: FintechTheme.colors.text,
   },
   optionSubtitle: {
     fontSize: 12,
-    color: FintechTheme.colors.textMuted,
     marginTop: 2,
   },
   modalParagraph: {
     fontSize: 14,
     lineHeight: 22,
-    color: FintechTheme.colors.textSecondary,
     marginBottom: 12,
+  },
+  policyHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  policyMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  policySubheading: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  policyParagraph: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 10,
   },
   infoBadgeBox: {
     padding: 12,
     borderRadius: 12,
-    backgroundColor: FintechTheme.colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.border,
-    marginVertical: 8,
+    marginVertical: 6,
     gap: 4,
   },
   infoBadgeTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    color: FintechTheme.colors.accent,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   infoBadgeText: {
-    fontSize: 12,
-    color: FintechTheme.colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
     lineHeight: 18,
   },
   modalActionPrimary: {
     marginTop: 16,
-    backgroundColor: FintechTheme.colors.accent,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
@@ -856,9 +1051,7 @@ const styles = StyleSheet.create({
   },
   modalActionCancel: {
     flex: 1,
-    backgroundColor: FintechTheme.colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.border,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
@@ -866,11 +1059,9 @@ const styles = StyleSheet.create({
   modalActionCancelText: {
     fontSize: 15,
     fontWeight: '700',
-    color: FintechTheme.colors.text,
   },
   modalActionDanger: {
     flex: 1,
-    backgroundColor: FintechTheme.colors.down,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
