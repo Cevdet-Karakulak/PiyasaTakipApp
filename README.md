@@ -1,56 +1,220 @@
-# Welcome to your Expo app 👋
+# 📈 PiyasaRadarı (PiyasaTakipApp) – Canlı Finans & Piyasa Takip Platformu
+### **BIST 100 Hisseleri, Canlı Döviz, Altın, Kripto, Akaryakıt Fiyatları, Portföy Yönetimi ve Cloudflare Edge Cache Destekli Modern Finans Uygulaması (React Native + Expo SDK 57 + TypeScript + Zustand + Cloudflare Workers)**
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+---
 
-## Get started
+## 🚀 Proje Hakkında
 
-1. Install dependencies
+**PiyasaRadarı (PiyasaTakipApp)**; yatırımcılar, serbest piyasa takipçileri ve bireysel kullanıcılar için Borsa İstanbul (BIST 100), serbest piyasa döviz kurları, altın türleri, emtialar, kripto paralar ve 81 ilin güncel akaryakıt fiyatlarını tek ekranda anlık olarak sunan modern, hızlı ve cross-platform (iOS, Android, Web) bir **React Native (Expo SDK 57)** uygulamasıdır.
 
-   ```bash
-   npm install
-   ```
+Finansal mobil uygulamalarda en büyük sorun; Yahoo Finance ve benzeri küresel veri kaynaklarına doğrudan istek atıldığında yaşanan CORS engelleri, dakikalık istek limitleri (429 Too Many Requests) ve yavaş veri çekme süreleridir. **PiyasaRadarı**, kendi mimarisine özel olarak geliştirilmiş **Cloudflare Edge Cache Proxy** mikroservisi ile tüm BIST ve piyasa verilerini 60 saniyelik akıllı önbellek (`caches.default`) ve 10'arlı eşzamanlı toplu sorgu (Batch Request) havuzlarıyla işler; kullanıcılara gecikmesiz, kota engeline takılmayan akıcı bir piyasa deneyimi yaşatır.
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## 📌 İçindekiler
+- [Temel Özellikler](#-temel-özellikler)
+- [Öne Çıkan Modüller](#-öne-çıkan-modüller)
+- [Cloudflare Edge Cache & Proxy Mimarisi](#-cloudflare-edge-cache--proxy-mimarisi)
+- [Kullanılan Teknolojiler](#-kullanılan-teknolojiler)
+- [Ekran Görüntüleri](#-ekran-görüntüleri)
+- [Proje Dizin Yapısı](#-proje-dizin-yapısı)
+- [Kurulum ve Çalıştırma](#-kurulum-ve-çalıştırma)
+- [Gizlilik ve Güvenlik](#-gizlilik-ve-güvenlik)
+- [Yasal Uyarı ve Sorumluluk Reddi](#-yasal-uyarı-ve-sorumluluk-reddi)
+- [Geliştirici ve İletişim](#-geliştirici-ve-iletişim)
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## ✨ Temel Özellikler
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- 📊 **Kapsamlı Canlı Piyasa Yelpazesi:**
+  - **Borsa İstanbul (BIST):** BIST 100 endeksi ve tüm popüler hisse senetleri (THYAO, ASELS, GARAN, TUPRS, EREGL, BIMAS, KCHOL vb.).
+  - **Döviz Kurları:** USD/TRY, EUR/TRY, GBP/TRY, CHF/TRY ve çapraz kurlar.
+  - **Altın & Emtia:** Gram Altın, Çeyrek Altın, Yarım Altın, Cumhuriyet Altını, Ons Altın ($XAU/USD$) ve Brent Petrol.
+  - **Kripto Varlıklar:** Bitcoin (BTC), Ethereum (ETH) ve majör kripto paralar.
+- ⚡ **Kayan Canlı Ticker Bandı (`MarketTicker`):** Profesyonel finans ekranlarındaki gibi ekranın üstünde kesintisiz ve akıcı kayan, anlık fiyat ve yüzde değişim şeridi.
+- 📈 **İnteraktif Grafikler & Sparklines (`PriceChart` & `MiniSparkline`):** Günlük (1G), haftalık (1H), aylık (1A) ve yıllık (1Y) periyotlarda vektörel SVG trend çizgileri ve detaylı geçmiş fiyat grafikleri.
+- 💼 **Kişisel Portföy & Kâr/Zarar Takibi:** Sahip olunan hisse, döviz, altın veya kripto varlıkları alış maliyetiyle kaydetme; anlık piyasa fiyatıyla toplam portföy değerini ve net kâr/zarar tutarını/oranını izleme.
+- 💱 **Döviz & Altın Çevirici (Finans Hesap Makinesi):** Canlı kurlar üzerinden anında çift yönlü döviz çevirme ve gram/çeyrek altın alım-satım simülasyonu.
+- ⛽ **81 İl Bazlı Canlı Akaryakıt Fiyatları:** Türkiye genelindeki tüm illerde geçerli olan güncel Benzin, Motorin (Dizel) ve LPG otogaz pompa satış fiyatlarını anlık takip edebilme.
+- 📰 **Son Dakika Finans Haberleri:** Piyasalara yön veren önemli ekonomik gelişmeler, şirket açıklamaları ve borsa haberleri akışı.
+- ⭐ **Favoriler & Hızlı Erişim:** İlgilenilen varlıkları favorilere ekleme; offline önbellekleme ile internet kesintisinde bile son verileri görüntüleme.
+- 🎨 **Modern Fintech Dark Mode & Glassmorphism:** OLED ekranlar için optimize edilmiş derin koyu tema (`#0B0E14`), modern buzlu cam efektleri (`expo-glass-effect`), akıcı geçiş animasyonları (`react-native-reanimated`).
 
-## Get a fresh project
+---
 
-When you're ready, run:
+## 🧠 Öne Çıkan Modüller
 
-```bash
-npm run reset-project
+### 1. Kayan Canlı Ticker Şeridi (`MarketTicker.tsx`)
+Borsa salonlarındaki profesyonel LED panolar gibi tasarlanan ticker bandı, seçilen kritik varlıkların fiyat ve değişim yüzdelerini akıcı bir animasyonla ekrandan geçirir. Kullanıcı istediğinde bandı duraklatabilir veya hızlandırabilir.
+
+### 2. Gelişmiş Varlık Kartı & Detay Modalı (`AssetCard.tsx` & `AssetDetailModal.tsx`)
+Her finansal enstrüman için mini sparkline grafiği, en yüksek/en düşük fiyat aralığı, hacim ve değişim yüzdeleri kart üzerinde özetlenir. Karta dokunulduğunda açılan tam ekran modalda derinlemesine geçmiş grafiği, teknik veriler ve favoriye ekleme kontrolleri yer alır.
+
+### 3. Akıllı Portföy Yönetimi (`portfolio.tsx`)
+Kullanıcılar alış fiyatını ve miktarını girerek varlıklarını portföye ekler. Uygulama, piyasa dalgalandıkça portföyün toplam piyasa değerini, toplam kâr/zararını ve varlık bazlı getiri oranlarını anlık olarak hesaplayıp görselleştirir.
+
+### 4. İl Bazlı Akaryakıt Takip Modülü (`fuel.tsx`)
+Büyükşehirler başta olmak üzere il seçimi yapılarak distribütörlerin güncel Benzin, Motorin ve LPG fiyatları karşılaştırmalı olarak listelenir.
+
+---
+
+## 🌐 Cloudflare Edge Cache & Proxy Mimarisi
+
+Uygulamanın arkasında çalışan `cloudflare-worker` mikroservisi, mobil uygulamanın performansını ve sürekliliğini garanti altına alır:
+
+```
+[Mobil Uygulama / Web]
+         │
+         ▼
+[Cloudflare Edge Cache (60s TTL)] ──(Cache Hit: <25ms)──► [Kullanıcıya Anında Yanıt]
+         │ (Cache Miss)
+         ▼
+[10'lu Paralel Eşzamanlı İstek Havuzu]
+         ├──► Yahoo Finance API (BIST 100 & Emtia)
+         ├──► Truncgil Finans API (Serbest Piyasa Döviz & Altın)
+         └──► Akaryakıt Servisleri
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- ⚡ **60 Saniye Edge Cache:** Cloudflare CDN üzerinde 60 saniye boyunca saklanan veriler sayesinde aynı anda binlerce kullanıcı istek atsa dahi veri kaynaklarına dakikada yalnızca 1 istek gider.
+- 📦 **Batch Request Desteği:** Tek bir HTTP isteği ile 100 farklı BIST hissesi virgülle ayrılarak topluca çekilebilir (`/batch?symbols=THYAO.IS,GARAN.IS...`).
+- 🛡️ **Tam CORS Çözümü:** `Access-Control-Allow-Origin: *` başlıkları sayesinde hem mobil uygulamalarda hem de Web önizlemelerinde sıfır CORS hatası.
 
-### Other setup steps
+---
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## ⚙️ Kullanılan Teknolojiler
 
-## Learn more
+<p align="center">
+  <img src="https://img.shields.io/badge/React%20Native-0.86.3-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
+  <img src="https://img.shields.io/badge/Expo-SDK%2057-000000?style=for-the-badge&logo=expo&logoColor=white" />
+  <img src="https://img.shields.io/badge/Expo%20Router-v4-000020?style=for-the-badge&logo=expo&logoColor=white" />
+  <img src="https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/Cloudflare%20Workers-Edge%20Cache-F38020?style=for-the-badge&logo=cloudflare&logoColor=white" />
+  <img src="https://img.shields.io/badge/Zustand-5.0-764ABC?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Reanimated-4.5-FF5722?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/React%20Native%20SVG-Charts-E91E63?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/AsyncStorage-Offline%20First-4A90E2?style=for-the-badge" />
+</p>
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 📸 Ekran Görüntüleri
 
-## Join the community
+| **01. Canlı Piyasa & Ticker** | **02. Detaylı Grafik & Hisse Analizi** | **03. Portföy & Kâr/Zarar Takibi** |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/01-Piyasa.png" width="300" alt="Piyasa"/> | <img src="docs/screenshots/02-Grafik-Detay.png" width="300" alt="Grafik"/> | <img src="docs/screenshots/03-Portfoy.png" width="300" alt="Portföy"/> |
 
-Join our community of developers creating universal apps.
+<br>
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| **04. Döviz & Altın Çevirici** | **05. İl Bazlı Akaryakıt Fiyatları** | **06. Finans & Borsa Haberleri** |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/04-Cevirici.png" width="300" alt="Çevirici"/> | <img src="docs/screenshots/05-Akaryakit.png" width="300" alt="Akaryakıt"/> | <img src="docs/screenshots/06-Haberler.png" width="300" alt="Haberler"/> |
+
+---
+
+## 📁 Proje Dizin Yapısı
+
+```bash
+PiyasaTakipApp/
+├── assets/                     # İkonlar, logolar, yazı tipleri ve görsel varlıklar
+├── cloudflare-worker/          # Cloudflare Edge Cache Proxy mikroservisi
+│   ├── src/                    # Worker istek yönlendiricisi ve cache algoritmaları
+│   ├── wrangler.toml           # Cloudflare Worker yapılandırması
+│   └── README.md               # Proxy dokümantasyonu ve dağıtım kılavuzu
+├── docs/                       # Dokümantasyon ve ekran görüntüleri
+│   └── screenshots/            # README ve mağaza vitrin görselleri
+├── src/                        # Mobil uygulama kaynak kodları
+│   ├── api/                    # Veri servisleri (Market, Fuel, News ve config)
+│   ├── app/                    # Expo Router dosya tabanlı navigasyon
+│   │   ├── (tabs)/             # Ana sekmeler (Piyasa, Portföy, Çevirici, Akaryakıt, Haberler)
+│   │   └── _layout.tsx         # Kök tema ve navigasyon düzeni
+│   ├── components/             # Kartlar, grafikler, ticker ve UI bileşenleri
+│   │   ├── AssetCard.tsx       # Varlık özet kartı
+│   │   ├── AssetDetailModal.tsx# Detaylı grafik ve analiz modalı
+│   │   ├── MarketTicker.tsx    # Kayan canlı borsa şeridi
+│   │   ├── PriceChart.tsx      # SVG tabanlı geçmiş fiyat grafiği
+│   │   └── MiniSparkline.tsx   # Liste içi mini trend çizgisi
+│   ├── constants/              # Fintech renk paletleri ve tema sabitleri
+│   ├── hooks/                  # Tema ve canlı piyasa verisi custom hook'ları
+│   ├── store/                  # Zustand state yönetimi (marketStore, favoritesStore)
+│   ├── types/                  # TypeScript veri modelleri ve arayüzler
+│   └── utils/                  # Para/fiyat formatlayıcıları ve altın hesaplayıcı
+├── app.json                    # Expo ve EAS proje yapılandırması
+└── package.json                # Proje bağımlılıkları ve çalıştırma betikleri
+```
+
+---
+
+## 📥 Kurulum ve Çalıştırma
+
+### Gereksinimler
+- **Node.js:** `v20.0.0` veya üzeri
+- **npm** veya **bun**
+- *(İsteğe bağlı)* Telefonunuzda test için **Expo Go** uygulaması
+
+### 1. Repoyu Klonlayın
+```bash
+git clone https://github.com/Cevdet-Karakulak/PiyasaTakipApp.git
+cd PiyasaTakipApp
+```
+
+### 2. Bağımlılıkları Yükleyin
+```bash
+npm install
+```
+
+### 3. Uygulamayı Başlatın
+
+#### 📱 Mobil Geliştirme (Expo):
+```bash
+npx expo start
+```
+Terminalde oluşan QR kodu telefonunuzun kamerası veya **Expo Go** uygulaması ile taratarak doğrudan cihazınızda test edebilirsiniz.
+
+#### 🌐 Web Önizlemesi:
+```bash
+npm run web
+```
+Tarayıcınızda `http://localhost:8081` adresinde açılacaktır.
+
+#### ☁️ Cloudflare Worker Dağıtımı (Opsiyonel):
+Kendi proxy sunucunuzu dağıtmak isterseniz:
+```bash
+cd cloudflare-worker
+npx wrangler login
+npx wrangler deploy
+```
+
+---
+
+## 🔒 Gizlilik ve Güvenlik
+
+- **Yerel Depolama (Offline-First):** Eklediğiniz portföy kayıtları, varlık miktarları ve favoriler tamamen cihazınızda (`AsyncStorage`) saklanır; herhangi bir harici veritabanına iletilmez.
+- **Sıfır Kişisel Veri İsteği:** Uygulama üyelik, T.C. kimlik numarası, e-posta veya finansal hesap bilgisi talep etmez.
+- **Reklamsız ve Şeffaf:** Kullanıcı deneyimini bozan üçüncü taraf reklam ağları veya izleyiciler bulunmaz.
+
+---
+
+## ⚖️ Yasal Uyarı ve Sorumluluk Reddi
+
+> [!IMPORTANT]
+> **PiyasaRadarı (PiyasaTakipApp)** içinde sunulan hisse senedi, döviz, altın, petrol, akaryakıt ve kripto para verileri **yalnızca bilgilendirme amaçlıdır**.
+> 
+> Uygulama bünyesindeki hiçbir veri, grafik, hesaplama veya haber **Yatırım Tavsiyesi Niteliğinde Değildir (YTD)**. Gerçekleştirilen finansal işlemlerden doğabilecek kâr veya zararlardan uygulama geliştiricisi sorumlu tutulamaz.
+
+---
+
+## 👨‍💻 Geliştirici ve İletişim
+
+**Cevdet Karakulak**  
+*Junior Full Stack Developer*
+
+- 🌐 **GitHub:** [@Cevdet-Karakulak](https://github.com/Cevdet-Karakulak)
+- 💼 **Projeler:** [NexDrop](https://github.com/Cevdet-Karakulak/NexDrop) • [UKD Hesapla](https://github.com/Cevdet-Karakulak/ukd-hesapla) • [Tempo](https://github.com/Cevdet-Karakulak/tempo-chess-clock) • [Turvona](https://github.com/Cevdet-Karakulak/turvona) • [PiyasaRadarı](https://github.com/Cevdet-Karakulak/PiyasaTakipApp)
+- 📧 **Destek & Geri Bildirim:** `floppatechcorp@gmail.com`
+
+---
+
+<p align="center">
+  <sub>Piyasaların nabzını tutun, fırsatları yakalayın. 📈⚡</sub>
+</p>
