@@ -1,4 +1,4 @@
-name: EAS Local Build (Free)
+name: iOS & Android Local Build (Free)
 
 on:
   workflow_dispatch:
@@ -7,8 +7,8 @@ on:
         type: choice
         description: 'Hangi platform derlensin?'
         options:
-          - android
           - ios
+          - android
 
 jobs:
   build:
@@ -21,17 +21,20 @@ jobs:
       - name: Node.js Kurulumu
         uses: actions/setup-node@v4
         with:
-          node-version: 24.x # Deprecation hatasını ve yarn çökmesini çözer
-
-      - name: Expo ve EAS CLI Kurulumu
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          node-version: 24.x # Uyarıları ortadan kaldırır
 
       - name: Paketleri Yükle
-        # Loglarda yarn hatası verdiği için npm yerine yarn kullanıyoruz
-        run: yarn install
+        run: npm install
 
       - name: Uygulamayı Derle (Expo Kotası Harcamaz)
-        run: eas build --platform ${{ github.event.inputs.platform }} --profile production --non-interactive --local
+        # Çıktıyı doğrudan uygulamanın ana dizinine PiyasaRadari.ipa veya .aab olarak kaydeder
+        run: npx --yes eas-cli@latest build --platform ${{ github.event.inputs.platform }} --profile production --non-interactive --local --output ./PiyasaRadari.${{ github.event.inputs.platform == 'ios' && 'ipa' || 'aab' }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Üretilen Dosyayı GitHub'a Yükle (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PiyasaRadari-${{ github.event.inputs.platform }}
+          path: ./PiyasaRadari.*
+          retention-days: 3
