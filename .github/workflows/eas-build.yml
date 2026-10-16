@@ -1,27 +1,33 @@
 name: iOS & Android Local Build (Free)
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       platform:
         type: choice
         description: 'Hangi platform derlensin?'
+        default: 'both'
         options:
+          - both
           - ios
           - android
       build_number:
-        description: 'App Store / Play Store için yeni ve benzersiz bir derleme (build) numarası girin (Örn: 3, 4, 5)'
-        required: true
+        description: 'App Store / Play Store için yeni ve benzersiz bir derleme (build) numarası girin (Örn: 4, 5, 6)'
+        required: false
+        default: '4'
         type: string
 
 jobs:
-  build:
-    runs-on: ${{ github.event.inputs.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
+  build-ios:
+    if: ${{ github.event_name == 'push' || inputs.platform == 'both' || inputs.platform == 'ios' }}
+    runs-on: macos-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      EAS_NO_VCS: '1' # EAS'in Git senkronizasyon hataları vermesini engeller
-      BUILD_NUM: ${{ inputs.build_number }}
-    
+      EAS_NO_VCS: '1'
+      BUILD_NUM: ${{ inputs.build_number || '4' }}
     steps:
       - name: Kodu Çek
         uses: actions/checkout@v4
@@ -35,35 +41,84 @@ jobs:
         run: npm install
 
       - name: Build Numarasını app.json İçine Enjekte Et
-        # Bu adım, girdiğiniz build numarasını app.json dosyasına otomatik yazar.
-        # Turvona'daki scripts/prepare-local-build.cjs dosyasının yaptığı işi yapar.
         run: |
           node -e "
           const fs = require('fs');
           const file = 'app.json';
           if (fs.existsSync(file)) {
             const config = JSON.parse(fs.readFileSync(file));
-            const buildNum = process.env.BUILD_NUM;
+            const buildNum = process.env.BUILD_NUM || '4';
             if (config.expo) {
               if (!config.expo.ios) config.expo.ios = {};
-              config.expo.ios.buildNumber = buildNum;
-              
+              config.expo.ios.buildNumber = String(buildNum);
               if (!config.expo.android) config.expo.android = {};
-              config.expo.android.versionCode = parseInt(buildNum) || 1;
+              config.expo.android.versionCode = parseInt(buildNum, 10) || 4;
             }
             fs.writeFileSync(file, JSON.stringify(config, null, 2));
-            console.log('Build number başarıyla şuna güncellendi:', buildNum);
-          } else {
-            console.log('app.json bulunamadı, app.config.js kullanıyorsanız bu adımı yoksayın.');
+            console.log('iOS Build number güncellendi:', buildNum);
           }
           "
 
-      - name: Uygulamayı Derle (Expo Kotası Harcamaz)
-        run: npx --yes eas-cli@latest build --platform ${{ github.event.inputs.platform }} --profile production --non-interactive --local --output ./PiyasaRadari.${{ github.event.inputs.platform == 'ios' && 'ipa' || 'aab' }}
+      - name: iOS IPA Derle (Expo Kotası Harcamaz)
+        run: npx --yes eas-cli@latest build --platform ios --profile production --non-interactive --local --output ./PiyasaRadari.ipa
 
-      - name: Üretilen Dosyayı GitHub'a Yükle (Artifact)
+      - name: iOS IPA Dosyasını GitHub'a Yükle (Artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: PiyasaRadari-${{ github.event.inputs.platform }}-${{ inputs.build_number }}
-          path: ./PiyasaRadari.*
-          retention-days: 3
+          name: PiyasaRadari-ios-${{ inputs.build_number || '4' }}
+          path: ./PiyasaRadari.ipa
+          retention-days: 7
+
+  build-android:
+    if: ${{ github.event_name == 'push' || inputs.platform == 'both' || inputs.platform == 'android' }}
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_NO_VCS: '1'
+      BUILD_NUM: ${{ inputs.build_number || '4' }}
+    steps:
+      - name: Kodu Çek
+        uses: actions/checkout@v4
+
+      - name: Node.js Kurulumu
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Java 17 Kurulumu
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Paketleri Yükle
+        run: npm install
+
+      - name: Build Numarasını app.json İçine Enjekte Et
+        run: |
+          node -e "
+          const fs = require('fs');
+          const file = 'app.json';
+          if (fs.existsSync(file)) {
+            const config = JSON.parse(fs.readFileSync(file));
+            const buildNum = process.env.BUILD_NUM || '4';
+            if (config.expo) {
+              if (!config.expo.ios) config.expo.ios = {};
+              config.expo.ios.buildNumber = String(buildNum);
+              if (!config.expo.android) config.expo.android = {};
+              config.expo.android.versionCode = parseInt(buildNum, 10) || 4;
+            }
+            fs.writeFileSync(file, JSON.stringify(config, null, 2));
+            console.log('Android versionCode güncellendi:', buildNum);
+          }
+          "
+
+      - name: Android AAB Derle (Expo Kotası Harcamaz)
+        run: npx --yes eas-cli@latest build --platform android --profile production --non-interactive --local --output ./PiyasaRadari.aab
+
+      - name: Android AAB Dosyasını GitHub'a Yükle (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PiyasaRadari-android-${{ inputs.build_number || '4' }}
+          path: ./PiyasaRadari.aab
+          retention-days: 7
