@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react-native';
 
 import { ASSETS } from '@/api/config';
-import { FintechTheme } from '@/constants/fintechTheme';
+import { FintechTheme, useThemeColors } from '@/constants/fintechTheme';
 import type { MarketQuote, MarketSymbol } from '@/types/market';
 import { formatPercent, formatPrice, getTrend } from '@/utils/format';
 
@@ -21,6 +21,8 @@ const HIGHLIGHT_SYMBOLS: MarketSymbol[] = [
 ];
 
 export const MarketTicker: React.FC<MarketTickerProps> = ({ quotes, onSelectSymbol }) => {
+  const colors = useThemeColors();
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -39,19 +41,31 @@ export const MarketTicker: React.FC<MarketTickerProps> = ({ quotes, onSelectSymb
           const decimals = assetDef?.decimals ?? 2;
 
           const badgeColor = isUp
-            ? FintechTheme.colors.up
+            ? colors.up
             : isDown
-            ? FintechTheme.colors.down
-            : FintechTheme.colors.neutral;
+            ? colors.down
+            : colors.neutral;
 
           return (
             <Pressable
               key={sym}
-              style={({ pressed }) => [styles.pillCard, pressed && styles.pillPressed]}
+              style={({ pressed }) => [
+                styles.pillCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+                pressed && {
+                  backgroundColor: colors.surfaceHighlight,
+                  borderColor: colors.borderLight,
+                },
+              ]}
               onPress={() => onSelectSymbol(q)}
             >
               <View style={styles.topRow}>
-                <Text style={styles.symbolText}>{q.shortName}</Text>
+                <Text style={[styles.symbolText, { color: colors.textMuted }]}>
+                  {q.shortName}
+                </Text>
                 <View style={styles.badgeRow}>
                   {isUp && <ArrowUpRight size={11} color={badgeColor} strokeWidth={2.5} />}
                   {isDown && <ArrowDownRight size={11} color={badgeColor} strokeWidth={2.5} />}
@@ -61,7 +75,7 @@ export const MarketTicker: React.FC<MarketTickerProps> = ({ quotes, onSelectSymb
                 </View>
               </View>
 
-              <Text style={styles.priceText}>
+              <Text style={[styles.priceText, { color: colors.text }]}>
                 {formatPrice(q.price, q.currency, decimals)}
               </Text>
             </Pressable>
@@ -81,17 +95,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pillCard: {
-    backgroundColor: FintechTheme.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: FintechTheme.colors.border,
     minWidth: 125,
-  },
-  pillPressed: {
-    backgroundColor: FintechTheme.colors.surfaceHighlight,
-    borderColor: FintechTheme.colors.borderLight,
   },
   topRow: {
     flexDirection: 'row',
@@ -103,7 +111,6 @@ const styles = StyleSheet.create({
   symbolText: {
     fontSize: 12,
     fontWeight: '700',
-    color: FintechTheme.colors.textMuted,
   },
   badgeRow: {
     flexDirection: 'row',
@@ -117,7 +124,6 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 14,
     fontWeight: '800',
-    color: FintechTheme.colors.text,
     ...FintechTheme.typography.tabularNums,
   },
 });

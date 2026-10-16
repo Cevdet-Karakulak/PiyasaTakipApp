@@ -1,22 +1,22 @@
-import type { TextStyle } from 'react-native';
+import { useColorScheme, type ColorSchemeName, type TextStyle } from 'react-native';
 
 import { usePreferencesStore } from '@/store/preferencesStore';
 import type { ThemeMode } from '@/types/preferences';
 
 export const DARK_THEME_COLORS = {
-  background: '#0B0E14',
-  backgroundSecondary: '#0F131C',
-  surface: '#141A26',
-  surfaceHighlight: '#1A2234',
-  border: '#1F293D',
-  borderLight: '#2A364F',
+  background: '#0b1423',
+  backgroundSecondary: '#101b2e',
+  surface: '#142136',
+  surfaceHighlight: '#1b2c45',
+  border: '#263750',
+  borderLight: '#314666',
 
   // TradingView Finansal Göstergeler
   up: '#00C076',
   upSoft: 'rgba(0, 192, 118, 0.15)',
-  down: '#FF3B30',
-  downSoft: 'rgba(255, 59, 48, 0.15)',
-  neutral: '#94A3B8',
+  down: '#f15b6d',
+  downSoft: 'rgba(241, 91, 109, 0.15)',
+  neutral: '#a5b2c7',
 
   // Vurgu ve Marka
   accent: '#2962FF',
@@ -29,26 +29,26 @@ export const DARK_THEME_COLORS = {
   stockSoft: 'rgba(139, 92, 246, 0.15)',
 
   // Tipografi
-  text: '#F8FAFC',
-  textSecondary: '#94A3B8',
-  textMuted: '#64748B',
-  textInverse: '#0B0E14',
+  text: '#f4f6fa',
+  textSecondary: '#cbd5e1',
+  textMuted: '#a5b2c7',
+  textInverse: '#0b1423',
 };
 
 export const LIGHT_THEME_COLORS = {
-  background: '#F8FAFC',
-  backgroundSecondary: '#FFFFFF',
-  surface: '#FFFFFF',
-  surfaceHighlight: '#F1F5F9',
-  border: '#E2E8F0',
-  borderLight: '#CBD5E1',
+  background: '#f5f6f8',
+  backgroundSecondary: '#ffffff',
+  surface: '#ffffff',
+  surfaceHighlight: '#edf1f7',
+  border: '#e8ecf2',
+  borderLight: '#d5dde8',
 
   // TradingView Finansal Göstergeler (Açık tema için yüksek kontrast)
-  up: '#059669',
-  upSoft: 'rgba(5, 150, 105, 0.12)',
-  down: '#DC2626',
-  downSoft: 'rgba(220, 38, 38, 0.12)',
-  neutral: '#64748B',
+  up: '#247b5c',
+  upSoft: 'rgba(36, 123, 92, 0.12)',
+  down: '#d7354a',
+  downSoft: 'rgba(215, 53, 74, 0.12)',
+  neutral: '#607086',
 
   // Vurgu ve Marka
   accent: '#2563EB',
@@ -61,16 +61,31 @@ export const LIGHT_THEME_COLORS = {
   stockSoft: 'rgba(124, 58, 237, 0.12)',
 
   // Tipografi
-  text: '#0F172A',
+  text: '#142036',
   textSecondary: '#334155',
-  textMuted: '#64748B',
-  textInverse: '#F8FAFC',
+  textMuted: '#607086',
+  textInverse: '#f4f6fa',
 };
 
 export type ThemeColors = typeof DARK_THEME_COLORS;
 
-export const getThemeColors = (theme: ThemeMode): ThemeColors =>
-  theme === 'light' ? LIGHT_THEME_COLORS : DARK_THEME_COLORS;
+export const resolveThemeMode = (
+  theme: ThemeMode,
+  systemScheme?: ColorSchemeName
+): 'dark' | 'light' => {
+  if (theme === 'system') {
+    return systemScheme === 'light' ? 'light' : 'dark';
+  }
+  return theme;
+};
+
+export const getThemeColors = (
+  theme: ThemeMode,
+  systemScheme?: ColorSchemeName
+): ThemeColors => {
+  const resolved = resolveThemeMode(theme, systemScheme);
+  return resolved === 'light' ? LIGHT_THEME_COLORS : DARK_THEME_COLORS;
+};
 
 export const FintechTheme = {
   colors: DARK_THEME_COLORS,
@@ -83,9 +98,10 @@ export const FintechTheme = {
 };
 
 /**
- * Aktif kullanıcı temasına (dark / light) göre dinamik renk paletini döndüren React hook'u.
+ * Aktif kullanıcı temasına (dark / light / system) göre dinamik renk paletini döndüren React hook'u.
  */
 export function useThemeColors(): ThemeColors {
   const theme = usePreferencesStore((s) => s.theme);
-  return theme === 'light' ? LIGHT_THEME_COLORS : DARK_THEME_COLORS;
+  const systemScheme = useColorScheme();
+  return getThemeColors(theme, systemScheme);
 }

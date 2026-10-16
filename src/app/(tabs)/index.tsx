@@ -20,6 +20,8 @@ import {
   Settings,
   ShieldCheck,
   Star,
+  User,
+  UserCheck,
   X,
   Zap,
 } from 'lucide-react-native';
@@ -31,7 +33,9 @@ import { AssetDetailModal } from '@/components/AssetDetailModal';
 import { MarketTicker } from '@/components/MarketTicker';
 import { FintechTheme, useThemeColors } from '@/constants/fintechTheme';
 import { useMarketData } from '@/hooks/useMarketData';
+import { useAuthStore } from '@/store/authStore';
 import { useFavoritesStore } from '@/store/favoritesStore';
+import { useTranslation } from '@/store/preferencesStore';
 import type { MarketQuote, MarketSymbol } from '@/types/market';
 import { formatTime } from '@/utils/format';
 
@@ -49,6 +53,8 @@ const CATEGORIES: { id: FilterCategory; label: string }[] = [
 export default function MarketsScreen() {
   const { quotes, isLoading, isRefreshing, lastUpdated, refresh, addCustomQuote } = useMarketData();
   const { favorites } = useFavoritesStore();
+  const user = useAuthStore((s) => s.user);
+  const { t } = useTranslation();
   const colors = useThemeColors();
 
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>('all');
@@ -60,7 +66,6 @@ export default function MarketsScreen() {
 
   // Varlık listesini hazırla: Gram, Çeyrek ve Cumhuriyet altınları en üst sıralarda yer alır,
   // ardından kullanıcının favorilediği veya aradığı diğer dinamik BIST hisseleri eklenir.
-  // Favoriden çıkarılan ve aktif aranmayan özel hisseler listeden anında kaybolur.
   const assetList = useMemo(() => {
     const list: MarketQuote[] = [];
     const seen = new Set<string>();
@@ -86,10 +91,9 @@ export default function MarketsScreen() {
     return list;
   }, [quotes, favorites, searchQuery]);
 
-  // Dinamik BIST Hisse Arama: Listede olmayan hisseler (Örn: SASA, HEKTS, MIATK) Cloudflare Proxy üzerinden anlık çekilir
+  // Dinamik BIST Hisse Arama: Listede olmayan hisseler (Örn: SASA, HEKTS, MIATK) anlık çekilir
   useEffect(() => {
     const cleanQuery = searchQuery.trim().toUpperCase().replace(/\.IS$/, '');
-    // 2-6 karakterlik olası bir BIST hisse sembolü
     const isPotentialBistSymbol = /^[A-Z0-9]{2,6}$/.test(cleanQuery);
     const candidateSymbol = `${cleanQuery}.IS`;
 
@@ -120,8 +124,6 @@ export default function MarketsScreen() {
     const isSearching = query.length > 0;
 
     const filtered = assetList.filter((item) => {
-      // 1. Kategori filtresi: Arama kutusu boşken kategoriyi filtrele;
-      // kullanıcı arama yapıyorsa tüm pazardaki hisse/emtia/döviz sonuçlarını getir.
       if (!isSearching) {
         if (selectedCategory === 'favorites') {
           if (!favorites.includes(item.symbol)) return false;
@@ -136,7 +138,6 @@ export default function MarketsScreen() {
         }
       }
 
-      // 2. Arama sorgusu
       if (isSearching) {
         const matchSymbol = item.symbol.toLowerCase().includes(query);
         const matchShort = item.shortName.toLowerCase().includes(query);
@@ -166,13 +167,18 @@ export default function MarketsScreen() {
     const res = await refresh();
     if (res.fromCache) {
       const remainingSec = Math.round(res.nextAllowedInMs / 1000);
-      setCacheNotice(`Smart Cache aktif: Veriler güncel (${remainingSec} sn sonra yenilenebilir)`);
+      setCacheNotice(
+        t(`Smart Cache aktif: Veriler güncel (${remainingSec} sn sonra yenilenebilir)`)
+      );
       setTimeout(() => setCacheNotice(null), 3000);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
       {/* Üst Bar / Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -181,7 +187,7 @@ export default function MarketsScreen() {
             <Text style={[styles.appTitle, { color: colors.text }]}>PiyasaRadarı</Text>
             <View style={[styles.liveTag, { backgroundColor: colors.accentSoft }]}>
               <Zap size={10} color={colors.accent} fill={colors.accent} />
-              <Text style={[styles.liveTagText, { color: colors.accent }]}>CANLI</Text>
+              <Text style={[styles.liveTagText, { color: colors.accent }]}>{t('CANLI')}</Text>
             </View>
           </View>
 
@@ -192,12 +198,14 @@ export default function MarketsScreen() {
             <Text style={[styles.dotSeparator, { color: colors.textMuted }]}>•</Text>
             <Clock size={11} color={colors.textMuted} />
             <Text style={[styles.updateTimeText, { color: colors.textMuted }]}>
-              {lastUpdated ? `Uygulama Güncelleme: ${formatTime(lastUpdated)}` : 'Yükleniyor...'}
+              {lastUpdated
+                ? t(`Uygulama Güncelleme: ${formatTime(lastUpdated)}`)
+                : t('Yükleniyor...')}
             </Text>
           </View>
         </View>
 
-        {/* Sağ Üst Aksiyonlar: Yenile ve Ayarlar */}
+        {/* Sağ Üst Aksiyonlar: Yenile, Kullanıcı Girişi ve Ayarlar */}
         <View style={styles.headerRight}>
           <Pressable
             onPress={handleRefresh}
@@ -221,10 +229,30 @@ export default function MarketsScreen() {
             onPress={() => router.push('/(tabs)/settings')}
             style={({ pressed }) => [
               styles.headerIconButton,
+              {
+                backgroundColor: user ? colors.upSoft : colors.surface,
+                borderColor: user ? colors.up : colors.border,
+              },
+              pressed && { opacity: 0.8 },
+            ]}
+            accessibilityLabel={t('Hesap')}
+            accessibilityRole="button"
+          >
+            {user ? (
+              <UserCheck size={17} color={colors.up} />
+            ) : (
+              <User size={17} color={colors.text} />
+            )}
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push('/(tabs)/settings')}
+            style={({ pressed }) => [
+              styles.headerIconButton,
               { backgroundColor: colors.surface, borderColor: colors.border },
               pressed && { backgroundColor: colors.surfaceHighlight, opacity: 0.8 },
             ]}
-            accessibilityLabel="Ayarlar"
+            accessibilityLabel={t('Ayarlar')}
             accessibilityRole="button"
           >
             <Settings size={18} color={colors.text} />
@@ -244,11 +272,16 @@ export default function MarketsScreen() {
       <MarketTicker quotes={quotes} onSelectSymbol={handleCardPress} />
 
       {/* Arama Çubuğu */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View
+        style={[
+          styles.searchContainer,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
         <Search size={16} color={colors.textMuted} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
-          placeholder="Varlık veya BIST hissesi ara (SASA, HEKTS, Altın...)"
+          placeholder={t('Varlık veya BIST hissesi ara (SASA, HEKTS, Altın...)')}
           placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -269,7 +302,7 @@ export default function MarketsScreen() {
         <View style={styles.searchNoticeRow}>
           <ActivityIndicator size="small" color={colors.accent} />
           <Text style={[styles.searchNoticeText, { color: colors.accent }]}>
-            Borsa İstanbul taranıyor: {searchQuery.trim().toUpperCase()}.IS...
+            {t(`Borsa İstanbul taranıyor: ${searchQuery.trim().toUpperCase()}.IS...`)}
           </Text>
         </View>
       )}
@@ -312,7 +345,7 @@ export default function MarketsScreen() {
                     },
                   ]}
                 >
-                  {cat.label}
+                  {t(cat.label)}
                 </Text>
               </Pressable>
             );
@@ -324,7 +357,9 @@ export default function MarketsScreen() {
       {isLoading && assetList.length === 0 ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={[styles.loadingMessage, { color: colors.textMuted }]}>Piyasa verileri alınıyor...</Text>
+          <Text style={[styles.loadingMessage, { color: colors.textMuted }]}>
+            {t('Piyasa verileri alınıyor...')}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -346,14 +381,14 @@ export default function MarketsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                {isSearchingOnline ? 'BIST Taranıyor...' : 'Sonuç Bulunamadı'}
+                {isSearchingOnline ? t('BIST Taranıyor...') : t('Sonuç Bulunamadı')}
               </Text>
               <Text style={[styles.emptySub, { color: colors.textMuted }]}>
                 {isSearchingOnline
                   ? `"${searchQuery.trim().toUpperCase()}" için Borsa İstanbul'dan canlı veri çekiliyor...`
                   : searchQuery
                   ? `"${searchQuery}" ile eşleşen varlık veya hisse bulunamadı.`
-                  : 'Bu kategoride henüz varlık bulunmuyor.'}
+                  : t('Bu kategoride henüz varlık bulunmuyor.')}
               </Text>
             </View>
           }
@@ -391,11 +426,11 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
   },
   headerIconButton: {
-    width: 38,
-    height: 38,
+    width: 37,
+    height: 37,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
@@ -413,7 +448,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#00C076',
   },
   appTitle: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '800',
     letterSpacing: -0.5,
   },

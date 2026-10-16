@@ -1,5 +1,5 @@
 export type Language = 'tr' | 'en';
-export type ThemeMode = 'dark' | 'light';
+export type ThemeMode = 'dark' | 'light' | 'system';
 
 export interface Preferences {
   theme: ThemeMode;
