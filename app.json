@@ -43,6 +43,7 @@
       [
         "react-native-google-mobile-ads",
         {
+          "androidSdk": "classic",
           "androidAppId": "ca-app-pub-9426623468970945~8428164597",
           "iosAppId": "ca-app-pub-9426623468970945~6133173748",
           "delayAppMeasurementInit": true,
@@ -61,5 +62,10 @@
       }
     },
     "owner": "floppachesscorps-team"
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-9426623468970945~8428164597",
+    "ios_app_id": "ca-app-pub-9426623468970945~6133173748",
+    "delay_app_measurement_init": true
   }
 }
