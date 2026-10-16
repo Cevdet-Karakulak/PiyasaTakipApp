@@ -32,10 +32,21 @@ jobs:
       - name: Kodu Çek
         uses: actions/checkout@v4
 
-      - name: Node.js Kurulumu
+      - name: Node.js Kurulumu (NPM Önbellekli)
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
+
+      - name: CocoaPods Önbelleği (iOS Hızlandırma)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-cocoapods-
 
       - name: Paketleri Yükle
         run: npm install
@@ -70,13 +81,16 @@ jobs:
           retention-days: 7
 
   build-android:
-    if: ${{ github.event_name == 'push' || inputs.platform == 'both' || inputs.platform == 'android' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.platform == 'both' || inputs.platform == 'android') }}
     runs-on: ubuntu-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS: '1'
       BUILD_NUM: ${{ inputs.build_number || '5' }}
       ORG_GRADLE_PROJECT_reactNativeArchitectures: 'armeabi-v7a,arm64-v8a'
+      ORG_GRADLE_PROJECT_org.gradle.caching: 'true'
+      ORG_GRADLE_PROJECT_org.gradle.parallel: 'true'
+      ORG_GRADLE_PROJECT_org.gradle.jvmargs: '-Xmx4096m -XX:MaxMetaspaceSize=1024m'
     steps:
       - name: Sunucuda Disk Alanı Aç (~30 GB)
         run: |
@@ -91,16 +105,28 @@ jobs:
       - name: Kodu Çek
         uses: actions/checkout@v4
 
-      - name: Node.js Kurulumu
+      - name: Node.js Kurulumu (NPM Önbellekli)
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Java 17 Kurulumu
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Gradle & CMake Önbelleği (Android Hızlandırma)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.ccache
+          key: ${{ runner.os }}-gradle-${{ hashFiles('package-lock.json', 'app.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Paketleri Yükle
         run: npm install

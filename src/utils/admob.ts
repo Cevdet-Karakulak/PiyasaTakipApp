@@ -5,7 +5,7 @@ export const ADMOB_CONFIG = {
   androidAppId: 'ca-app-pub-9426623468970945~8428164597',
   iosAppId: 'ca-app-pub-9426623468970945~6133173748',
   androidInterstitialUnitId: 'ca-app-pub-9426623468970945/5509612352',
-  iosInterstitialUnitId: 'ca-app-pub-9426623468970945/6867670912',
+  iosInterstitialUnitId: 'ca-app-pub-9426623468970945/4397420245',
 } as const;
 
 // Google AdMob politikası gereği minimum bekleme süresi ve etkileşim eşiği
