@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeColors } from '@/constants/fintechTheme';
 import { useTranslation } from '@/store/preferencesStore';
+import { recordAdInteraction } from '@/utils/admob';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -24,6 +25,11 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      screenListeners={{
+        tabPress: () => {
+          recordAdInteraction();
+        },
+      }}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

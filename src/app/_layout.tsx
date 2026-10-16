@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { getThemeColors, resolveThemeMode } from '@/constants/fintechTheme';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { initAdMob } from '@/utils/admob';
 
 // Tarayıcı eklentilerinden (örn. Urban VPN chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon)
 // kaynaklanan harici hataların Expo Web konsolunu kirletmesini engelle
@@ -51,6 +52,7 @@ export default function RootLayout() {
   const colors = getThemeColors(theme, systemScheme);
 
   useEffect(() => {
+    initAdMob().catch(() => {});
     const timer = setTimeout(() => {
       SplashScreen.hideAsync().catch(() => {});
     }, 300);
