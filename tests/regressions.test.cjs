@@ -2,7 +2,7 @@ const { storage } = require('./register.cjs');
 const { test, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseHistory, deriveGoldHistory } = require('../src/utils/history.ts');
-const { fetchHistoricalChart } = require('../src/api/marketService.ts');
+const { fetchHistoricalChart, buildGoldQuotes, quoteFromTruncgil, fetchMarketSnapshot } = require('../src/api/marketService.ts');
 const { parseFuelPrices, fetchProvinceFuelPrices, FUEL_PROVINCES } = require('../src/api/fuelService.ts');
 const { fetchFuelNews, fetchLiveNews } = require('../src/api/newsService.ts');
 const { calculateFuelScenario } = require('../src/utils/fuelScenario.ts');
@@ -26,21 +26,22 @@ test('gold never uses a future FX observation or an indefinitely old rate', () =
 });
 test('coin history applies gold weight and purity, not one common scaling ratio', () => {
   const gold = deriveGoldHistory([point(100, 3110.34768)], [point(100, 30)], 'CEYREK_ALTIN');
-  assert.ok(Math.abs(gold[0].value - 3000 * 1.754 * 0.916) < 1e-8);
+  assert.ok(Math.abs(gold[0].value - 3000 * 1.754 * 0.9166) < 1e-8);
 });
+for (const symbol of ['GRAM_ALTIN', 'CEYREK_ALTIN', 'YARIM_ALTIN', 'TAM_ALTIN', 'CUMHURIYET_ALTINI', 'GC=F'])
 for (const [range, expectedRange, interval] of [['1d', '1d', '5m'], ['1w', '5d', '15m'], ['1mo', '1mo', '1d'], ['1y', '1y', '1wk']]) {
-  test(`gold history ${range} uses the working batch route and historical FX`, async () => {
+  test(`gold history ${symbol} ${range} uses the working batch route and historical FX`, async () => {
     const urls = [];
     global.fetch = async (url) => {
       urls.push(new URL(url)); const symbol = new URL(url).searchParams.get('symbols');
       return response({ results: { [symbol]: series(symbol === 'GC=F' ? [3110.34768, 3110.34768, 3110.34768] : [30, 35, 40]) } });
     };
-    const points = await fetchHistoricalChart('CUMHURIYET_ALTINI', range);
-    assert.equal(points.length, 3); assert.ok(points[2].value > points[0].value);
-    assert.equal(urls.length, 2);
+    const points = await fetchHistoricalChart(symbol, range);
+    assert.equal(points.length, 3); if (symbol !== 'GC=F') assert.ok(points[2].value > points[0].value);
+    assert.equal(urls.length, symbol === 'GC=F' ? 1 : 2);
     assert.ok(urls.every((u) => u.pathname === '/batch' && u.searchParams.get('range') === expectedRange));
     assert.equal(urls.find((u) => u.searchParams.get('symbols') === 'GC=F').searchParams.get('interval'), interval);
-    assert.equal(urls.find((u) => u.searchParams.get('symbols') === 'USDTRY=X').searchParams.get('interval'), range === '1y' ? '1d' : interval);
+    if (symbol !== 'GC=F') assert.equal(urls.find((u) => u.searchParams.get('symbols') === 'USDTRY=X').searchParams.get('interval'), range === '1y' ? '1d' : interval);
   });
 }
 test('chart falls back to single-symbol endpoint when batch fails', async () => {
@@ -134,4 +135,55 @@ test('successful empty fuel feeds mean no headline, never no price change', asyn
   global.fetch = async () => new Response('<rss><channel></channel></rss>');
   const result = await fetchFuelNews();
   assert.equal(result.error, false); assert.deepEqual(result.articles, []);
+});
+
+test('all gold types are registered for market list, data and history', () => {
+  const { ASSETS, GOLD_SYMBOLS, ASSET_DISPLAY_ORDER, TRUNCGIL_KEY_MAP } = require('../src/api/config.ts');
+  const { GOLD_SYMBOL_TO_TYPE, isDerivedGoldSymbol } = require('../src/utils/goldCalculator.ts');
+  assert.deepEqual([...GOLD_SYMBOLS].sort(), Object.keys(GOLD_SYMBOL_TO_TYPE).sort());
+  for (const symbol of GOLD_SYMBOLS) {
+    assert.ok(ASSET_DISPLAY_ORDER.includes(symbol)); assert.equal(ASSETS[symbol].category, 'gold');
+    assert.equal(isDerivedGoldSymbol(symbol), true); assert.ok(TRUNCGIL_KEY_MAP[symbol]);
+  }
+  assert.equal(isDerivedGoldSymbol('GC=F'), false);
+  assert.equal(isDerivedGoldSymbol('toString'), false);
+});
+test('half/full ziynet and Ata have distinct Darphane weights and theoretical values', () => {
+  const { calculateGoldPrices, GOLD_SPECS } = require('../src/utils/goldCalculator.ts');
+  const values = calculateGoldPrices(3110.34768, 30);
+  assert.equal(GOLD_SPECS.yarim.weightGrams, 3.508); assert.equal(GOLD_SPECS.tam.weightGrams, 7.016);
+  assert.equal(GOLD_SPECS.cumhuriyet.weightGrams, 7.216); assert.equal(GOLD_SPECS.yarim.purity, 0.9166);
+  assert.ok(Math.abs(values.yarim - values.ceyrek * 2) < 1e-8);
+  assert.ok(Math.abs(values.tam - values.ceyrek * 4) < 1e-8);
+  assert.ok(values.cumhuriyet > values.tam);
+  assert.equal(calculateGoldPrices(null, 30), null);
+  assert.equal(calculateGoldPrices(3110.34768, NaN), null);
+});
+test('gold quote fallback creates separate half/full entries and matches chart calculation', () => {
+  const q = (price, previousClose) => ({ price, previousClose, marketTime: 100 });
+  const quotes = buildGoldQuotes(q(3110.34768, 3000), q(30, 29));
+  for (const [symbol, quote] of Object.entries(quotes)) {
+    const history = deriveGoldHistory([point(100, 3110.34768)], [point(100, 30)], symbol);
+    assert.equal(quote.source, 'calculated'); assert.equal(quote.category, 'gold');
+    assert.equal(quote.currency, 'TRY'); assert.equal(quote.price, history[0].value);
+    assert.ok(quote.previousClose > 0);
+  }
+  assert.ok(quotes.YARIM_ALTIN); assert.ok(quotes.TAM_ALTIN);
+  assert.deepEqual(buildGoldQuotes(undefined, q(30, 29)), {});
+});
+test('half/full Truncgil values are separate; missing values never become another gold type', () => {
+  const data = { Update_Date: '2026-10-21 20:00:00', YARIMALTIN: { Selling: 20000, Buying: 19900, Change: 1 }, TAMALTIN: { Selling: 40000, Buying: 39800, Change: 2 } };
+  assert.equal(quoteFromTruncgil(data, 'YARIM_ALTIN').price, 20000);
+  assert.equal(quoteFromTruncgil(data, 'TAM_ALTIN').price, 40000);
+  assert.equal(quoteFromTruncgil(data, 'CEYREK_ALTIN'), null);
+});
+test('missing retail gold uses Truncgil FX/ons if Yahoo omitted those symbols', async () => {
+  global.fetch = async (url) => {
+    if (url.includes('truncgil')) return response({ Update_Date: '2026-10-21 20:00:00', ONS: { Selling: 3110.34768 }, USD: { Selling: 30 } });
+    if (url.includes('/batch?')) return response({ results: {} });
+    return response({}, 503);
+  };
+  const snapshot = await fetchMarketSnapshot();
+  assert.ok(snapshot.quotes.YARIM_ALTIN.price > 0); assert.ok(snapshot.quotes.TAM_ALTIN.price > 0);
+  assert.equal(snapshot.quotes.YARIM_ALTIN.source, 'calculated');
 });

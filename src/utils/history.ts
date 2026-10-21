@@ -1,5 +1,5 @@
 import type { ChartPoint, GoldSymbol } from '../types/market';
-import { calculateGoldPrices } from './goldCalculator';
+import { calculateGoldPrices, GOLD_SYMBOL_TO_TYPE } from './goldCalculator';
 
 export interface RawHistory {
   timestamp?: number[];
@@ -21,7 +21,6 @@ export function parseHistory(result: RawHistory): ChartPoint[] {
 
 /** Theoretical TRY value using the most recent preceding FX observation. */
 export function deriveGoldHistory(ons: ChartPoint[], fx: ChartPoint[], symbol: GoldSymbol): ChartPoint[] {
-  const key = { GRAM_ALTIN: 'gram', CEYREK_ALTIN: 'ceyrek', CUMHURIYET_ALTINI: 'cumhuriyet' } as const;
   const points: ChartPoint[] = [];
   let cursor = -1;
   for (const point of ons) {
@@ -30,7 +29,7 @@ export function deriveGoldHistory(ons: ChartPoint[], fx: ChartPoint[], symbol: G
     // Allow weekends/holidays, but never use a future rate or carry one indefinitely.
     if (!rate || point.timestamp - rate.timestamp > 4 * 86_400_000) continue;
     const values = calculateGoldPrices(point.value, rate.value);
-    if (values) points.push({ timestamp: point.timestamp, value: values[key[symbol]] });
+    if (values) points.push({ timestamp: point.timestamp, value: values[GOLD_SYMBOL_TO_TYPE[symbol]] });
   }
   return points;
 }

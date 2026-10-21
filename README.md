@@ -63,7 +63,7 @@ Zam/indirim bölümü Google Haberler ve Bloomberg HT RSS üzerinden son 3 güne
 
 Geçmiş fiyatlar çalışan `/batch` yolundan, hata olursa `/chart` yolundan alınır. Worker tekli sembol yolunda `GC%3DF` ve `USDTRY%3DX` değerlerini yalnızca bir kez çözer; eski çift kodlama 404 hatasına neden oluyordu. Mobil düzeltme mevcut Worker'ın batch yoluyla çalışır; Worker değişikliği ayrıca dağıtılabilir.
 
-Altın grafikleri dönemin ons vadeli fiyatı ve USD/TRY geçmişinden teorik has değer olarak hesaplanır; Truncgil alış/satış geçmişi değildir. Geçmiş seri bugünkü fiyata oranlanmaz. Dönemler birbirinden bağımsızdır; başarısız istekte sahte zamanlarla gün içi seri gösterilmez. Kaynak hatasında yeniden deneme seçeneği vardır.
+Altın grafikleri dönemin ons vadeli fiyatı ve USD/TRY geçmişinden teorik has değer olarak hesaplanır; Truncgil alış/satış geçmişi değildir. Gram, çeyrek, yarım ziynet, tam ziynet, Cumhuriyet/Ata ve ons altın için dört dönem desteklenir. Yarım ve tam altın piyasa listesi, portföy ve çeviriciye dahildir. Ziynet çeyrek/yarım/tam ağırlıkları 1,754 / 3,508 / 7,016 g, Ata ağırlığı 7,216 g ve saflık 916,6 milyem olarak [Darphane tablosuna](https://www.darphane.gov.tr/cumhuriyet-altini-uretimi) göre hesaplanır. Geçmiş seri bugünkü fiyata oranlanmaz. Dönemler birbirinden bağımsızdır; başarısız istekte sahte zamanlarla gün içi seri gösterilmez. Kaynak hatasında yeniden deneme seçeneği vardır.
 
 ```bash
 npm ci

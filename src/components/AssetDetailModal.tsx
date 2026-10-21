@@ -15,6 +15,7 @@ import { ASSETS } from '@/api/config';
 import { AssetIcon } from '@/components/AssetIcon';
 import { fetchHistoricalChart } from '@/api/marketService';
 import { PriceChart } from '@/components/PriceChart';
+import { isDerivedGoldSymbol } from '@/utils/goldCalculator';
 import { FintechTheme } from '@/constants/fintechTheme';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import type { ChartPoint, HistoricalRange, MarketQuote } from '@/types/market';
@@ -230,7 +231,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
               />
               )}
             </View>
-            {['GRAM_ALTIN', 'CEYREK_ALTIN', 'CUMHURIYET_ALTINI'].includes(quote.symbol) && (
+            {isDerivedGoldSymbol(quote.symbol) && (
               <Text style={[styles.statLabel, { paddingHorizontal: 4, marginTop: 8 }]}>
                 Grafik: Yahoo ons altın vadeli fiyatı × dönemin USD/TL kuru ile hesaplanan teorik has değer. Truncgil alış/satış geçmişi değildir; prim ve işçilik içermez.
               </Text>

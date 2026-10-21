@@ -32,7 +32,7 @@ import type {
   YahooChartResponse,
   YahooSymbol,
 } from '@/types/market';
-import { calculateGoldPrices, type GoldPrices } from '@/utils/goldCalculator';
+import { calculateGoldPrices, GOLD_SYMBOL_TO_TYPE, isDerivedGoldSymbol } from '@/utils/goldCalculator';
 import { deriveGoldHistory, parseHistory, type RawHistory } from '@/utils/history';
 
 /* ------------------------------------------------------------------ */
@@ -287,13 +287,7 @@ export function quoteFromTruncgil(data: TruncgilResponse, symbol: MarketSymbol):
 /* Altın hesaplama (Fallback)                                          */
 /* ------------------------------------------------------------------ */
 
-const GOLD_KEY: Record<GoldSymbol, keyof GoldPrices> = {
-  GRAM_ALTIN: 'gram',
-  CEYREK_ALTIN: 'ceyrek',
-  CUMHURIYET_ALTINI: 'cumhuriyet',
-};
-
-/** Ons ve USD/TRY quote'larından gram/çeyrek/cumhuriyet quote'ları üretir. */
+/** Ons ve USD/TRY quote'larından gram/çeyrek/yarım/tam/Cumhuriyet quote'ları üretir. */
 export function buildGoldQuotes(ons?: MarketQuote, usdTry?: MarketQuote): QuoteMap {
   if (!ons || !usdTry) return {};
 
@@ -303,7 +297,7 @@ export function buildGoldQuotes(ons?: MarketQuote, usdTry?: MarketQuote): QuoteM
 
   const quotes: QuoteMap = {};
   for (const symbol of GOLD_SYMBOLS) {
-    const k = GOLD_KEY[symbol];
+    const k = GOLD_SYMBOL_TO_TYPE[symbol];
     quotes[symbol] = buildQuote(symbol, {
       price: current[k],
       previousClose: previous?.[k] ?? null,
@@ -375,17 +369,7 @@ export async function fetchMarketSnapshot(
     }
   }
 
-  // 2. Kural: Truncgil'den gelmeyen altınlar için GoldCalculator'ı yedek (fallback) olarak çalıştır
-  if (missingGold.length > 0) {
-    const calculatedGold = buildGoldQuotes(quotes['GC=F'], quotes['USDTRY=X']);
-    for (const goldSym of missingGold) {
-      if (calculatedGold[goldSym]) {
-        quotes[goldSym] = calculatedGold[goldSym];
-      }
-    }
-  }
-
-  // 3. Kural: Yahoo'da eksik kalan semboller için Truncgil'den yedekleme yap
+  // 2. Kural: Yahoo'da eksik kalan semboller için Truncgil'den yedekleme yap
   if (truncgilData && failedYahoo.length > 0) {
     for (const sym of failedYahoo) {
       if (!quotes[sym] && TRUNCGIL_KEY_MAP[sym]) {
@@ -393,6 +377,16 @@ export async function fetchMarketSnapshot(
         if (q && q.price > 0) {
           quotes[sym] = q;
         }
+      }
+    }
+  }
+
+  // 3. Kural: Truncgil'den gelmeyen altınlar için GoldCalculator'ı yedek (fallback) olarak çalıştır
+  if (missingGold.length > 0) {
+    const calculatedGold = buildGoldQuotes(quotes['GC=F'], quotes['USDTRY=X']);
+    for (const goldSym of missingGold) {
+      if (calculatedGold[goldSym]) {
+        quotes[goldSym] = calculatedGold[goldSym];
       }
     }
   }
@@ -477,12 +471,12 @@ export async function fetchHistoricalChart(
   const request = (async () => {
     const interval = RANGE_CONFIG[range].interval;
     let points: ChartPoint[];
-    if (GOLD_SYMBOLS.includes(symbol as GoldSymbol)) {
+    if (isDerivedGoldSymbol(symbol)) {
       const [ons, fx] = await Promise.all([
         fetchHistorySeries('GC=F', range, interval),
         fetchHistorySeries('USDTRY=X', range, range === '1y' ? '1d' : interval),
       ]);
-      points = deriveGoldHistory(ons, fx, symbol as GoldSymbol);
+      points = deriveGoldHistory(ons, fx, symbol);
     } else {
       points = await fetchHistorySeries(symbol, range, interval);
     }

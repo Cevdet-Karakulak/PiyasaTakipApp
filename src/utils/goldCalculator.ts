@@ -5,36 +5,44 @@
  * teorik (has değer) TL fiyatlarını hesaplar.
  *
  *   Gram (24 ayar)      = Ons(USD) × USDTRY / 31.1034768
- *   Çeyrek / Cumhuriyet = Gram × (brüt ağırlık × milyem)
+ *   Ziynet / Cumhuriyet = Gram × (brüt ağırlık × milyem)
  *
  * Not: Kuyumcu fiyatları işçilik ve alış/satış makası içerir. Bu fark
  * `premiums` parametresiyle (ör. 0.02 = %2) modellenebilir.
  */
 
+import type { GoldSymbol, MarketSymbol } from '../types/market';
+
 export const TROY_OUNCE_IN_GRAMS = 31.1034768;
 
-/** Ziynet altınları 22 ayardır (916 milyem). */
-const KARAT_22_PURITY = 0.916;
+/** Darphane: 22 ayar = 916,6 milyem. Ziynet ve sikke ağırlıkları farklıdır.
+ * https://www.darphane.gov.tr/cumhuriyet-altini-uretimi
+ */
+const KARAT_22_PURITY = 0.9166;
 
 export const GOLD_SPECS = {
   gram: { weightGrams: 1, purity: 1 },
   ceyrek: { weightGrams: 1.754, purity: KARAT_22_PURITY },
+  yarim: { weightGrams: 3.508, purity: KARAT_22_PURITY },
+  tam: { weightGrams: 7.016, purity: KARAT_22_PURITY },
   cumhuriyet: { weightGrams: 7.216, purity: KARAT_22_PURITY },
 } as const;
 
 export type GoldType = keyof typeof GOLD_SPECS;
 
-export interface GoldPremiums {
-  gram?: number;
-  ceyrek?: number;
-  cumhuriyet?: number;
-}
+export type GoldPremiums = Partial<Record<GoldType, number>>;
+export type GoldPrices = Record<GoldType, number>;
 
-export interface GoldPrices {
-  gram: number;
-  ceyrek: number;
-  cumhuriyet: number;
-}
+/** Shared by quote generation and history so new gold types cannot be omitted. */
+export const GOLD_SYMBOL_TO_TYPE: Record<GoldSymbol, GoldType> = {
+  GRAM_ALTIN: 'gram',
+  CEYREK_ALTIN: 'ceyrek',
+  YARIM_ALTIN: 'yarim',
+  TAM_ALTIN: 'tam',
+  CUMHURIYET_ALTINI: 'cumhuriyet',
+};
+export const isDerivedGoldSymbol = (symbol: MarketSymbol): symbol is GoldSymbol =>
+  Object.hasOwn(GOLD_SYMBOL_TO_TYPE, symbol);
 
 const isPositive = (n: number | null | undefined): n is number =>
   typeof n === 'number' && Number.isFinite(n) && n > 0;
@@ -63,6 +71,8 @@ export function calculateGoldPrices(
   return {
     gram: priceOf('gram'),
     ceyrek: priceOf('ceyrek'),
+    yarim: priceOf('yarim'),
+    tam: priceOf('tam'),
     cumhuriyet: priceOf('cumhuriyet'),
   };
 }
@@ -74,3 +84,4 @@ export const GoldCalculator = {
   calculateGramGold,
   calculateGoldPrices,
 };
+

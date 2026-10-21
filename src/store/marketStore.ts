@@ -208,7 +208,7 @@ export const useMarketStore = create<MarketState>()(
     }),
     {
       name: MARKET_CACHE_KEY,
-      version: 1,
+      version: 2, // Altın türleri ve Darphane saflığı güncellendi; eski fiyat önbelleğini yenile.
       storage: createJSONStorage(getStorage),
       // Sadece veri ve zaman damgası kalıcı; status/error gibi geçici alanlar değil.
       partialize: (s): PersistedState => ({ snapshot: s.snapshot, lastFetchedAt: s.lastFetchedAt }),
@@ -275,3 +275,4 @@ export const selectLastFetchedAt = (s: MarketState) => s.lastFetchedAt;
 export const selectStatus = (s: MarketState) => s.status;
 export const selectError = (s: MarketState) => s.error;
 export const selectWarnings = (s: MarketState) => s.snapshot?.warnings;
+
