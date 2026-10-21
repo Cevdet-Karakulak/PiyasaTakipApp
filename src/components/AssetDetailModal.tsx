@@ -37,12 +37,18 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
   const [range, setRange] = useState<HistoricalRange>('1d');
   const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
+  const [chartError, setChartError] = useState<string | null>(null);
+  const [chartKey, setChartKey] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [measuredWidth, setMeasuredWidth] = useState(0);
   const [calcQuantity, setCalcQuantity] = useState('1');
 
   const { isFavorite, toggleFavorite } = useFavoritesStore();
+  const symbol = quote?.symbol;
+  const activeChartKey = `${symbol}:${range}`;
 
   useEffect(() => {
-    if (!visible || !quote) return;
+    if (!visible || !symbol) return;
 
     let isMounted = true;
 
@@ -50,19 +56,15 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
     queueMicrotask(async () => {
       if (!isMounted) return;
       setIsLoadingChart(true);
+      setChartPoints([]);
+      setChartError(null);
+      setChartKey(`${symbol}:${range}`);
       try {
-        const points = await fetchHistoricalChart(quote.symbol, range, quote.price);
+        const points = await fetchHistoricalChart(symbol, range);
         if (!isMounted) return;
-
-        if (points.length === 0 && quote.sparkline && quote.sparkline.length >= 2) {
-          const fallback = quote.sparkline.map((val, idx) => ({
-            timestamp: Date.now() - (quote.sparkline.length - idx) * 900000,
-            value: val,
-          }));
-          setChartPoints(fallback);
-        } else {
-          setChartPoints(points);
-        }
+        setChartPoints(points);
+      } catch (error) {
+        if (isMounted) setChartError(error instanceof Error ? error.message : 'Geçmiş fiyatlar yüklenemedi.');
       } finally {
         if (isMounted) setIsLoadingChart(false);
       }
@@ -71,7 +73,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
     return () => {
       isMounted = false;
     };
-  }, [visible, quote, range]);
+  }, [visible, symbol, range, retry]);
 
   if (!quote) return null;
 
@@ -83,7 +85,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
   const decimals = assetDef?.decimals ?? 2;
 
   const screenWidth = Dimensions.get('window').width;
-  const chartWidth = Math.min(screenWidth - 32, 600);
+  const chartWidth = measuredWidth || Math.min(screenWidth - 64, 568);
 
   // Hızlı hesaplama
   const parsedQty = parseFloat(calcQuantity.replace(',', '.')) || 0;
@@ -210,15 +212,34 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
             </View>
 
             {/* Fiyat Grafiği */}
-            <View style={styles.chartWrapper}>
+            <View style={styles.chartWrapper} onLayout={(event) => setMeasuredWidth(event.nativeEvent.layout.width)}>
+              {chartError && chartKey === activeChartKey ? (
+                <View style={{ padding: 20, gap: 16 }} accessibilityLiveRegion="polite">
+                  <Text style={styles.statLabel}>{chartError}</Text>
+                  <Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)} style={styles.iconBtn}>
+                    <Text style={styles.statValue}>Yeniden dene</Text>
+                  </Pressable>
+                </View>
+              ) : (
               <PriceChart
-                points={chartPoints}
+                points={chartKey === activeChartKey ? chartPoints : []}
                 width={chartWidth}
                 height={200}
-                isPositive={isUp || trend === 'flat'}
-                isLoading={isLoadingChart}
+                isPositive={chartPoints.length > 1 ? chartPoints[chartPoints.length - 1].value >= chartPoints[0].value : true}
+                isLoading={isLoadingChart || chartKey !== activeChartKey}
               />
+              )}
             </View>
+            {['GRAM_ALTIN', 'CEYREK_ALTIN', 'CUMHURIYET_ALTINI'].includes(quote.symbol) && (
+              <Text style={[styles.statLabel, { paddingHorizontal: 4, marginTop: 8 }]}>
+                Grafik: Yahoo ons altın vadeli fiyatı × dönemin USD/TL kuru ile hesaplanan teorik has değer. Truncgil alış/satış geçmişi değildir; prim ve işçilik içermez.
+              </Text>
+            )}
+            {chartKey === activeChartKey && chartPoints.length > 1 && !isLoadingChart && (
+              <Text style={[styles.statLabel, { marginTop: 8 }]}>
+                {new Date(chartPoints[0].timestamp).toLocaleString('tr-TR')} – {new Date(chartPoints[chartPoints.length - 1].timestamp).toLocaleString('tr-TR')}
+              </Text>
+            )}
 
             {/* Gün İçi En Yüksek / En Düşük & İstatistik Kutuları */}
             <View style={styles.statsSection}>
@@ -578,3 +599,4 @@ const styles = StyleSheet.create({
     ...FintechTheme.typography.tabularNums,
   },
 });
+

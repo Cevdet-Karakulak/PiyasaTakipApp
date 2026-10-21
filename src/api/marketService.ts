@@ -33,6 +33,7 @@ import type {
   YahooSymbol,
 } from '@/types/market';
 import { calculateGoldPrices, type GoldPrices } from '@/utils/goldCalculator';
+import { deriveGoldHistory, parseHistory, type RawHistory } from '@/utils/history';
 
 /* ------------------------------------------------------------------ */
 /* HTTP yardımcıları                                                   */
@@ -431,54 +432,66 @@ const RANGE_CONFIG: Record<HistoricalRange, { interval: string; range: string }>
   '1y': { interval: '1wk', range: '1y' },
 };
 
+const historyCache = new Map<string, { at: number; points: ChartPoint[] }>();
+const pendingHistory = new Map<string, Promise<ChartPoint[]>>();
+
+async function fetchHistorySeries(symbol: string, range: HistoricalRange, interval: string): Promise<ChartPoint[]> {
+  const cfg = RANGE_CONFIG[range];
+  const query = `interval=${interval}&range=${cfg.range}&includePrePost=false`;
+  // Batch query parameters decode '=' correctly even on older deployed Workers.
+  // The old single-symbol Worker double-encoded GC%3DF / USDTRY%3DX.
+  try {
+    const batch = await fetchJson<{ results?: Record<string, RawHistory> }>(
+      `${CLOUDFLARE_BATCH_URL}${encodeURIComponent(symbol)}&${query}`, 'yahoo',
+    );
+    const result = batch.results?.[symbol];
+    if (result) {
+      const points = parseHistory(result);
+      if (points.length >= 2) return points;
+    }
+  } catch {
+    // A transient batch failure can still succeed through the single route.
+  }
+  const json = await fetchJson<YahooChartResponse>(
+    `${YAHOO_CHART_URL}/${encodeURIComponent(symbol)}?${query}`, 'yahoo',
+  );
+  const result = json.chart?.result?.[0];
+  if (json.chart?.error || !result) throw new MarketServiceError('Geçmiş fiyat kaynağına ulaşılamadı.', 'yahoo');
+  const points = parseHistory(result);
+  if (points.length < 2) throw new MarketServiceError('Kaynak bu dönem için yeterli geçmiş veri döndürmedi.', 'yahoo');
+  return points;
+}
+
 /**
  * Varlık detay sayfası için seçilen periyotta geçmiş fiyat serisi getirir.
  */
 export async function fetchHistoricalChart(
   symbol: MarketSymbol,
   range: HistoricalRange = '1d',
-  currentPrice?: number,
 ): Promise<ChartPoint[]> {
-  // Altınlar için Yahoo'da Ons (GC=F) serisini alıp oranlayacağız
-  const targetSymbol = GOLD_SYMBOLS.includes(symbol as GoldSymbol) ? 'GC=F' : symbol;
-  const cfg = RANGE_CONFIG[range];
-  const url = `${YAHOO_CHART_URL}/${encodeURIComponent(targetSymbol)}?interval=${cfg.interval}&range=${cfg.range}&includePrePost=false`;
-
-  try {
-    const json = await fetchJson<YahooChartResponse>(url, 'yahoo');
-    const result = json.chart?.result?.[0];
-    if (!result) return [];
-
-    const timestamps = result.timestamp ?? [];
-    const closes = result.indicators?.quote?.[0]?.close ?? [];
-
-    const points: ChartPoint[] = [];
-    for (let i = 0; i < timestamps.length; i++) {
-      const val = closes[i];
-      if (isNum(val) && val > 0) {
-        points.push({
-          timestamp: timestamps[i] * 1000,
-          value: val,
-        });
-      }
+  const key = `${symbol}:${range}`;
+  const cached = historyCache.get(key);
+  if (cached && Date.now() - cached.at < 60_000) return cached.points;
+  const pending = pendingHistory.get(key);
+  if (pending) return pending;
+  const request = (async () => {
+    const interval = RANGE_CONFIG[range].interval;
+    let points: ChartPoint[];
+    if (GOLD_SYMBOLS.includes(symbol as GoldSymbol)) {
+      const [ons, fx] = await Promise.all([
+        fetchHistorySeries('GC=F', range, interval),
+        fetchHistorySeries('USDTRY=X', range, range === '1y' ? '1d' : interval),
+      ]);
+      points = deriveGoldHistory(ons, fx, symbol as GoldSymbol);
+    } else {
+      points = await fetchHistorySeries(symbol, range, interval);
     }
-
-    // Gram, Çeyrek ve Cumhuriyet altını için Ons eğrisini TL fiyatına orantıla
-    if (GOLD_SYMBOLS.includes(symbol as GoldSymbol) && currentPrice && currentPrice > 0 && points.length > 0) {
-      const lastVal = points[points.length - 1].value;
-      if (lastVal > 0) {
-        const ratio = currentPrice / lastVal;
-        return points.map((p) => ({
-          timestamp: p.timestamp,
-          value: Number((p.value * ratio).toFixed(2)),
-        }));
-      }
-    }
-
+    if (points.length < 2) throw new MarketServiceError('Bu dönem için eşleşen geçmiş veri yetersiz. Başka bir dönem seçebilir veya yeniden deneyebilirsiniz.', 'yahoo');
+    historyCache.set(key, { at: Date.now(), points });
     return points;
-  } catch {
-    return [];
-  }
+  })();
+  pendingHistory.set(key, request);
+  try { return await request; } finally { pendingHistory.delete(key); }
 }
 
 export const marketService = {
@@ -490,3 +503,4 @@ export const marketService = {
   buildGoldQuotes,
   fetchHistoricalChart,
 };
+

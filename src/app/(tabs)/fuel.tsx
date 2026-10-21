@@ -1,555 +1,152 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  AlertTriangle,
-  Calculator,
-  CheckCircle2,
-  Droplet,
-  Flame,
-  Fuel,
-  Gauge,
-  Info,
-  MapPin,
-  RefreshCw,
-  Scale,
-  TrendingDown,
-  TrendingUp,
-  Zap,
-} from 'lucide-react-native';
+import { Calculator, Droplet, Flame, Fuel, Info, MapPin, RefreshCw, Zap } from 'lucide-react-native';
 
-import {
-  calculateFuelPrediction,
-  fetchProvinceFuelPrices,
-  FUEL_PROVINCES,
-  type FuelPrices,
-  type FuelProvince,
-} from '@/api/fuelService';
+import { fetchProvinceFuelPrices, FUEL_PROVINCES, type FuelPrices } from '@/api/fuelService';
+import { fetchFuelNews } from '@/api/newsService';
 import { FintechTheme } from '@/constants/fintechTheme';
 import { useMarketData } from '@/hooks/useMarketData';
 import { formatNumber, formatPercent } from '@/utils/format';
+import { calculateFuelScenario } from '@/utils/fuelScenario';
 
 type FuelType = 'motorin' | 'benzin' | 'lpg';
 
 export default function FuelScreen() {
-  const { quotes, isRefreshing: isMarketRefreshing, refresh: refreshMarkets } = useMarketData();
-
-  const [selectedProvince, setSelectedProvince] = useState<FuelProvince>(FUEL_PROVINCES[0]);
+  const { quotes, refresh: refreshMarkets } = useMarketData();
+  const [selectedProvince, setSelectedProvince] = useState(FUEL_PROVINCES[0]);
   const [fuelPrices, setFuelPrices] = useState<FuelPrices | null>(null);
   const [isLoadingPrices, setIsLoadingPrices] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Depo Hesaplayıcı state
+  const [news, setNews] = useState<Awaited<ReturnType<typeof fetchFuelNews>> | null>(null);
   const [selectedFuelType, setSelectedFuelType] = useState<FuelType>('motorin');
-  const [tankLiters, setTankLiters] = useState<number>(50);
-  const [customLitersInput, setCustomLitersInput] = useState<string>('50');
-
-  const brentQuote = quotes['BZ=F'];
-  const usdTryQuote = quotes['USDTRY=X'];
-
-  const brentChange = brentQuote?.changePercent ?? 0;
-  const usdTryChange = usdTryQuote?.changePercent ?? 0;
-
-  // Akaryakıt fiyatlarını çek
-  const loadFuelPrices = useCallback(async (province = selectedProvince, force = false) => {
-    try {
-      if (force) setIsRefreshing(true);
-      else setIsLoadingPrices(true);
-
-      const data = await fetchProvinceFuelPrices(province, force);
-      setFuelPrices(data);
-    } catch (err) {
-      console.warn('Akaryakıt verisi alınamadı:', err);
-    } finally {
-      setIsLoadingPrices(false);
-      setIsRefreshing(false);
-    }
-  }, [selectedProvince]);
+  const [litersInput, setLitersInput] = useState('50');
+  const [deltaInput, setDeltaInput] = useState('');
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const prices = fuelPrices?.provinceName === selectedProvince.name && (fuelPrices.updatedAt === null || now - fuelPrices.updatedAt < 24 * 60 * 60_000) ? fuelPrices : null;
 
   useEffect(() => {
-    queueMicrotask(() => {
-      loadFuelPrices(selectedProvince, false);
+    let active = true;
+    void Promise.all([
+      fetchProvinceFuelPrices(selectedProvince, refreshToken > 0),
+      fetchFuelNews(),
+    ]).then(([data, headlines]) => {
+      if (active) { setFuelPrices(data); setNews(headlines); }
+    }).finally(() => {
+      if (active) { setIsLoadingPrices(false); setIsRefreshing(false); }
     });
-  }, [selectedProvince, loadFuelPrices]);
+    return () => { active = false; };
+  }, [selectedProvince, refreshToken]);
 
-  const handleRefresh = async () => {
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleRefresh = () => {
     setIsRefreshing(true);
-    await Promise.allSettled([
-      loadFuelPrices(selectedProvince, true),
-      refreshMarkets(),
-    ]);
-    setIsRefreshing(false);
+    setRefreshToken((value) => value + 1);
+    void refreshMarkets();
   };
 
-  const handleProvinceSelect = (province: FuelProvince) => {
-    setSelectedProvince(province);
-  };
-
-  // Tahmin Motoru Hesaplaması
-  const benzinCurrent = fuelPrices?.benzin ?? 84.0;
-  const motorinCurrent = fuelPrices?.motorin ?? 97.0;
-
-  const prediction = useMemo(() => {
-    return calculateFuelPrediction(brentChange, usdTryChange, benzinCurrent, motorinCurrent);
-  }, [brentChange, usdTryChange, benzinCurrent, motorinCurrent]);
-
-  // Depo Hesaplayıcı Verileri
-  const currentLiterPrice = useMemo(() => {
-    if (!fuelPrices) return 0;
-    if (selectedFuelType === 'benzin') return fuelPrices.benzin;
-    if (selectedFuelType === 'motorin') return fuelPrices.motorin;
-    return fuelPrices.lpg;
-  }, [fuelPrices, selectedFuelType]);
-
-  const estimatedDelta = useMemo(() => {
-    if (selectedFuelType === 'benzin') return prediction.estimatedBenzinDelta;
-    if (selectedFuelType === 'motorin') return prediction.estimatedMotorinDelta;
-    return Number((prediction.estimatedBenzinDelta * 0.4).toFixed(2));
-  }, [selectedFuelType, prediction]);
-
-  const currentTotal = tankLiters * currentLiterPrice;
-  const deltaTotal = tankLiters * estimatedDelta;
-  const newTotal = currentTotal + deltaTotal;
-
-  const handleLitersChange = (num: number) => {
-    setTankLiters(num);
-    setCustomLitersInput(String(num));
-  };
-
-  const handleCustomLitersText = (text: string) => {
-    setCustomLitersInput(text);
-    const parsed = parseFloat(text.replace(',', '.'));
-    if (!isNaN(parsed) && parsed > 0 && parsed <= 500) {
-      setTankLiters(parsed);
-    }
-  };
-
-  // Risk Bar Pozisyonu (-100 ile +100 arasını %0 - %100'e haritala)
-  const clampedChange = Math.max(-5, Math.min(5, prediction.compositeChange));
-  const pointerPercent = ((clampedChange + 5) / 10) * 100;
+  const scenario = calculateFuelScenario(prices?.[selectedFuelType], litersInput, deltaInput);
+  const brent = quotes['BZ=F'];
+  const usd = quotes['USDTRY=X'];
+  const marketChange = (q: typeof brent) => q && !q.isStale && now - q.marketTime <= 4 * 86_400_000 && q.marketTime <= now + 300_000 ? q.changePercent : null;
+  const openNews = (url: string) => { if (/^https:\/\//.test(url)) void Linking.openURL(url).catch(() => {}); };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      {/* Üst Bar */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.titleRow}>
-            <View style={styles.iconCircle}>
-              <Fuel size={20} color="#FFFFFF" strokeWidth={2.4} />
-            </View>
-            <Text style={styles.headerTitle}>Akaryakıt & Zam Takibi</Text>
+            <View style={styles.iconCircle}><Fuel size={20} color="#FFFFFF" /></View>
+            <Text style={styles.headerTitle}>Akaryakıt Takibi</Text>
           </View>
-          <Text style={styles.headerSub}>Canlı pompa fiyatları ve EPDK zam/indirim tahmin motoru</Text>
+          <Text style={styles.headerSub}>Kaynak fiyatları ve zam / indirim haberleri</Text>
         </View>
-
-        <Pressable
-          style={({ pressed }) => [styles.refreshBtn, pressed && styles.refreshBtnPressed]}
-          onPress={handleRefresh}
-          disabled={isRefreshing || isMarketRefreshing}
-          hitSlop={8}
-        >
-          {isRefreshing || isMarketRefreshing ? (
-            <ActivityIndicator size="small" color={FintechTheme.colors.accent} />
-          ) : (
-            <RefreshCw size={18} color={FintechTheme.colors.text} />
-          )}
+        <Pressable accessibilityRole="button" accessibilityLabel="Akaryakıt verilerini yenile" style={styles.refreshBtn} onPress={handleRefresh} disabled={isRefreshing}>
+          {isRefreshing ? <ActivityIndicator color={FintechTheme.colors.accent} /> : <RefreshCw size={18} color={FintechTheme.colors.text} />}
         </Pressable>
       </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={FintechTheme.colors.accent}
-            colors={[FintechTheme.colors.accent]}
-          />
-        }
-      >
-        {/* İl Seçici Yatay Kaydırma */}
+      <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={FintechTheme.colors.accent} />}>
         <View style={styles.provinceSection}>
-          <View style={styles.provinceHeader}>
-            <MapPin size={14} color={FintechTheme.colors.accent} />
-            <Text style={styles.provinceSectionTitle}>Şehir Seçimi (Opet & EPDK)</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.provinceList}
-          >
-            {FUEL_PROVINCES.map((prov) => {
-              const active = selectedProvince.id === prov.id;
-              return (
-                <Pressable
-                  key={prov.id}
-                  style={[styles.provincePill, active && styles.provincePillActive]}
-                  onPress={() => handleProvinceSelect(prov)}
-                >
-                  <Text style={[styles.provinceText, active && styles.provinceTextActive]}>
-                    {prov.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
+          <View style={styles.provinceHeader}><MapPin size={14} color={FintechTheme.colors.accent} /><Text style={styles.provinceSectionTitle}>Şehir Seçimi · Opet</Text></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.provinceList}>
+            {FUEL_PROVINCES.map((p) => (
+              <Pressable key={p.id} accessibilityRole="button" accessibilityState={{ selected: selectedProvince.id === p.id }} style={[styles.provincePill, selectedProvince.id === p.id && styles.provincePillActive]} onPress={() => { if (p.id !== selectedProvince.id) { setIsLoadingPrices(true); setSelectedProvince(p); } }}>
+                <Text style={[styles.provinceText, selectedProvince.id === p.id && styles.provinceTextActive]}>{p.name}</Text>
+              </Pressable>
+            ))}
           </ScrollView>
         </View>
 
-        {/* Canlı Akaryakıt Pompa Fiyat Kartları */}
-        {isLoadingPrices && !fuelPrices ? (
-          <View style={styles.priceLoadingBox}>
-            <ActivityIndicator size="small" color={FintechTheme.colors.accent} />
-            <Text style={styles.priceLoadingText}>Pompa fiyatları yükleniyor...</Text>
-          </View>
-        ) : (
+        {isLoadingPrices && !prices ? <View style={styles.priceLoadingBox}><ActivityIndicator color={FintechTheme.colors.accent} /><Text style={styles.priceLoadingText}>Kaynak fiyatları yükleniyor...</Text></View> : (
           <View style={styles.fuelCardsGrid}>
-            {/* Kurşunsuz Benzin 95 */}
-            <View style={styles.fuelCard}>
-              <View style={styles.fuelCardHeader}>
-                <View style={[styles.fuelIconBadge, { backgroundColor: FintechTheme.colors.energySoft }]}>
-                  <Flame size={18} color={FintechTheme.colors.energy} strokeWidth={2.4} />
-                </View>
-                <View style={styles.fuelBadge}>
-                  <Text style={styles.fuelBadgeText}>95 Oktan</Text>
-                </View>
+            {([{ key: 'benzin', name: 'Benzin', Icon: Flame }, { key: 'motorin', name: 'Motorin', Icon: Droplet }, { key: 'lpg', name: 'LPG', Icon: Zap }] as const).map(({ key, name, Icon }) => (
+              <View key={key} style={styles.fuelCard}>
+                <Icon size={22} color={FintechTheme.colors.accent} />
+                <Text style={styles.fuelName}>{name}</Text>
+                <Text style={styles.fuelPrice}>{formatNumber(prices?.[key], 2)}</Text>
+                <Text style={styles.fuelSubText}>{prices?.[key] == null ? 'Kaynak verisi yok' : 'TL / litre'}</Text>
               </View>
-              <Text style={styles.fuelName}>Benzin</Text>
-              <Text style={styles.fuelPrice}>
-                {formatNumber(fuelPrices?.benzin, 2)} <Text style={styles.currencyUnit}>TL / Lt</Text>
-              </Text>
-              <Text style={styles.fuelSubText}>{selectedProvince.name}</Text>
-            </View>
-
-            {/* Motorin (Dizel) */}
-            <View style={styles.fuelCard}>
-              <View style={styles.fuelCardHeader}>
-                <View style={[styles.fuelIconBadge, { backgroundColor: 'rgba(41, 98, 255, 0.15)' }]}>
-                  <Droplet size={18} color={FintechTheme.colors.accent} strokeWidth={2.4} />
-                </View>
-                <View style={styles.fuelBadge}>
-                  <Text style={styles.fuelBadgeText}>UltraForce</Text>
-                </View>
-              </View>
-              <Text style={styles.fuelName}>Motorin</Text>
-              <Text style={styles.fuelPrice}>
-                {formatNumber(fuelPrices?.motorin, 2)} <Text style={styles.currencyUnit}>TL / Lt</Text>
-              </Text>
-              <Text style={styles.fuelSubText}>{selectedProvince.name}</Text>
-            </View>
-
-            {/* LPG / Otogaz */}
-            <View style={styles.fuelCard}>
-              <View style={styles.fuelCardHeader}>
-                <View style={[styles.fuelIconBadge, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
-                  <Zap size={18} color="#8B5CF6" strokeWidth={2.4} />
-                </View>
-                <View style={styles.fuelBadge}>
-                  <Text style={styles.fuelBadgeText}>Otogaz</Text>
-                </View>
-              </View>
-              <Text style={styles.fuelName}>LPG</Text>
-              <Text style={styles.fuelPrice}>
-                {formatNumber(fuelPrices?.lpg, 2)} <Text style={styles.currencyUnit}>TL / Lt</Text>
-              </Text>
-              <Text style={styles.fuelSubText}>{selectedProvince.name}</Text>
-            </View>
+            ))}
           </View>
         )}
+        <Text style={[styles.footerInfoText, { marginVertical: 12 }]}>
+          {prices?.source === 'unavailable' || !prices ? 'Fiyat kaynağına ulaşılamadı; güncel fiyat doğrulanamadı.' : `${prices.source === 'cache' ? (prices.isStale ? 'Bağlantı kurulamadı · Eski kayıt' : 'Önbellek') : 'Opet kaynak sorgusu'} · ${new Date(prices.updatedAt!).toLocaleString('tr-TR')}${prices.districtName ? ` · ${prices.districtName}` : ''}`}
+          {'\n'}LPG için doğrulanmış veri yok. İlçe örnek fiyatları istasyonda farklı olabilir.
+        </Text>
 
-        {/* Akaryakıt Zam / İndirim Tahmin Motoru Kartı */}
         <View style={styles.predictionCard}>
-          <View style={styles.predCardHeader}>
-            <View style={styles.predTitleRow}>
-              <Gauge size={18} color={FintechTheme.colors.accent} />
-              <Text style={styles.predCardTitle}>Akaryakıt Zam / İndirim Tahmin Motoru</Text>
-            </View>
-            <View style={styles.epdkBadge}>
-              <Scale size={11} color={FintechTheme.colors.textMuted} />
-              <Text style={styles.epdkBadgeText}>EPDK Simülasyonu</Text>
-            </View>
+          <Text style={styles.predCardTitle}>Zam / İndirim Haberleri</Text>
+          <View style={[styles.decisionBox, { marginTop: 16 }]}>
+            <Text style={styles.decisionTitle}>KESİNLEŞMİŞ FİYAT DEĞİŞİMİ DOĞRULANAMADI</Text>
+            <Text style={styles.decisionDescription}>Bu ifade zam veya indirim olmayacağı anlamına gelmez. Haberlerde bildirilen beklentiler aşağıdadır; tarih, ürün ve tutarı kaynak haberde kontrol edin. Brent ve doların günlük değişimi, pompa fiyatı veya yürürlük tarihi tahmini değildir.</Text>
           </View>
-
-          {/* Girdiler: Brent Petrol + USD/TRY Canlı Değişimleri */}
+          {!news ? <ActivityIndicator style={{ marginVertical: 20 }} color={FintechTheme.colors.accent} /> : (
+            <>
+              <Text style={[styles.footerInfoText, { marginTop: 12 }]}>Son haber sorgusu: {new Date(news.fetchedAt).toLocaleString('tr-TR')}</Text>
+              {news.error ? <Text style={styles.decisionDescription}>Haber servisine ulaşılamadı. Zam / indirim durumu bilinmiyor.</Text> : news.articles.length === 0 ? <Text style={styles.decisionDescription}>Son 3 güne ait ilgili haber bulunamadı. Bu, fiyatların sabit kalacağı anlamına gelmez.</Text> : news.articles.map((article) => (
+                <Pressable key={article.id} accessibilityRole="link" onPress={() => openNews(article.link)} style={[styles.decisionBox, { marginTop: 12 }]}>
+                  <Text style={styles.decisionTitle}>{article.title}</Text>
+                  <Text style={styles.footerInfoText}>{new Date(article.publishedAt).toLocaleString('tr-TR')} · {article.source} · Haberi aç ↗</Text>
+                  <Text style={styles.footerInfoText}>Yayıncı haberi · Resmî fiyat teyidi değildir</Text>
+                </Pressable>
+              ))}
+            </>
+          )}
+          <Pressable accessibilityRole="link" style={{ paddingVertical: 16 }} onPress={() => openNews('https://news.google.com/search?q=akaryak%C4%B1t%20zam%20indirim&hl=tr&gl=TR&ceid=TR%3Atr')}><Text style={{ color: FintechTheme.colors.accent }}>Tüm akaryakıt haberlerini aç ↗</Text></Pressable>
           <View style={styles.factorRow}>
-            <View style={styles.factorItem}>
-              <Text style={styles.factorLabel}>Brent Petrol (%60)</Text>
-              <View style={styles.factorValueRow}>
-                {brentChange >= 0 ? (
-                  <TrendingUp size={14} color={FintechTheme.colors.down} />
-                ) : (
-                  <TrendingDown size={14} color={FintechTheme.colors.up} />
-                )}
-                <Text
-                  style={[
-                    styles.factorValue,
-                    { color: brentChange >= 0 ? FintechTheme.colors.down : FintechTheme.colors.up },
-                  ]}
-                >
-                  {formatPercent(brentChange)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.factorDivider} />
-
-            <View style={styles.factorItem}>
-              <Text style={styles.factorLabel}>Dolar / TL (%40)</Text>
-              <View style={styles.factorValueRow}>
-                {usdTryChange >= 0 ? (
-                  <TrendingUp size={14} color={FintechTheme.colors.down} />
-                ) : (
-                  <TrendingDown size={14} color={FintechTheme.colors.up} />
-                )}
-                <Text
-                  style={[
-                    styles.factorValue,
-                    { color: usdTryChange >= 0 ? FintechTheme.colors.down : FintechTheme.colors.up },
-                  ]}
-                >
-                  {formatPercent(usdTryChange)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.factorDivider} />
-
-            <View style={styles.factorItem}>
-              <Text style={styles.factorLabel}>Bileşik Maliyet</Text>
-              <Text
-                style={[
-                  styles.factorValue,
-                  {
-                    color:
-                      prediction.compositeChange > 0.5
-                        ? FintechTheme.colors.down
-                        : prediction.compositeChange < -0.5
-                        ? FintechTheme.colors.up
-                        : FintechTheme.colors.neutral,
-                  },
-                ]}
-              >
-                {formatPercent(prediction.compositeChange)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Görsel Risk Barı / İbresi */}
-          <View style={styles.gaugeContainer}>
-            <View style={styles.gaugeScaleLabels}>
-              <Text style={[styles.gaugeLabelText, { color: FintechTheme.colors.up }]}>İndirim (-5%)</Text>
-              <Text style={[styles.gaugeLabelText, { color: FintechTheme.colors.neutral }]}>Stabil (0%)</Text>
-              <Text style={[styles.gaugeLabelText, { color: FintechTheme.colors.down }]}>Zam (+5%)</Text>
-            </View>
-
-            <View style={styles.gaugeTrack}>
-              <View style={styles.gaugeSegmentGreen} />
-              <View style={styles.gaugeSegmentNeutral} />
-              <View style={styles.gaugeSegmentRed} />
-              {/* İbre İğnesi */}
-              <View style={[styles.gaugePointer, { left: `${pointerPercent}%` }]} />
-            </View>
-          </View>
-
-          {/* Tahmin Karar Kutusu */}
-          <View
-            style={[
-              styles.decisionBox,
-              prediction.status === 'HIKE_RISK' && styles.decisionBoxHike,
-              prediction.status === 'DISCOUNT_CHANCE' && styles.decisionBoxDiscount,
-              prediction.status === 'STABLE' && styles.decisionBoxStable,
-            ]}
-          >
-            <View style={styles.decisionTopRow}>
-              {prediction.status === 'HIKE_RISK' && (
-                <AlertTriangle size={20} color={FintechTheme.colors.down} />
-              )}
-              {prediction.status === 'DISCOUNT_CHANCE' && (
-                <CheckCircle2 size={20} color={FintechTheme.colors.up} />
-              )}
-              {prediction.status === 'STABLE' && (
-                <Scale size={20} color={FintechTheme.colors.neutral} />
-              )}
-
-              <Text
-                style={[
-                  styles.decisionTitle,
-                  prediction.status === 'HIKE_RISK' && { color: FintechTheme.colors.down },
-                  prediction.status === 'DISCOUNT_CHANCE' && { color: FintechTheme.colors.up },
-                  prediction.status === 'STABLE' && { color: FintechTheme.colors.neutral },
-                ]}
-              >
-                {prediction.title}
-              </Text>
-            </View>
-
-            <Text style={styles.decisionDescription}>{prediction.description}</Text>
-
-            {/* Tahmini Pompa Yansıması */}
-            <View style={styles.impactGrid}>
-              <View style={styles.impactItem}>
-                <Text style={styles.impactLabel}>Benzin Beklenen Pompa Etkisi:</Text>
-                <Text
-                  style={[
-                    styles.impactValue,
-                    prediction.estimatedBenzinDelta > 0
-                      ? { color: FintechTheme.colors.down }
-                      : prediction.estimatedBenzinDelta < 0
-                      ? { color: FintechTheme.colors.up }
-                      : { color: FintechTheme.colors.neutral },
-                  ]}
-                >
-                  {prediction.estimatedBenzinDelta > 0 ? '+' : ''}
-                  {formatNumber(prediction.estimatedBenzinDelta, 2)} TL / Lt
-                </Text>
-              </View>
-
-              <View style={styles.impactItem}>
-                <Text style={styles.impactLabel}>Motorin Beklenen Pompa Etkisi:</Text>
-                <Text
-                  style={[
-                    styles.impactValue,
-                    prediction.estimatedMotorinDelta > 0
-                      ? { color: FintechTheme.colors.down }
-                      : prediction.estimatedMotorinDelta < 0
-                      ? { color: FintechTheme.colors.up }
-                      : { color: FintechTheme.colors.neutral },
-                  ]}
-                >
-                  {prediction.estimatedMotorinDelta > 0 ? '+' : ''}
-                  {formatNumber(prediction.estimatedMotorinDelta, 2)} TL / Lt
-                </Text>
-              </View>
-            </View>
+            <View style={styles.factorItem}><Text style={styles.factorLabel}>Brent · günlük</Text><Text style={styles.factorValue}>{formatPercent(marketChange(brent))}</Text></View>
+            <View style={styles.factorItem}><Text style={styles.factorLabel}>USD/TL · günlük</Text><Text style={styles.factorValue}>{formatPercent(marketChange(usd))}</Text></View>
           </View>
         </View>
 
-        {/* Depo Hesaplayıcı Kartı */}
         <View style={styles.calculatorCard}>
-          <View style={styles.calcHeader}>
-            <View style={styles.calcTitleRow}>
-              <Calculator size={18} color={FintechTheme.colors.accent} />
-              <Text style={styles.calcCardTitle}>Depo Dolum & Fark Hesaplayıcı</Text>
-            </View>
-          </View>
-
-          {/* Yakıt Türü Seçimi */}
-          <Text style={styles.inputSectionLabel}>Yakıt Türü Seçin:</Text>
+          <View style={styles.calcTitleRow}><Calculator size={18} color={FintechTheme.colors.accent} /><Text style={styles.calcCardTitle}>Depo & Senaryo Hesaplayıcı</Text></View>
+          <Text style={styles.decisionDescription}>Haberdeki litre başına değişimi kendiniz girin. Bu hesap bir tahmin veya teyit değildir.</Text>
           <View style={styles.fuelTypeRow}>
-            {(['motorin', 'benzin', 'lpg'] as FuelType[]).map((type) => {
-              const active = selectedFuelType === type;
-              const label = type === 'motorin' ? 'Motorin (Dizel)' : type === 'benzin' ? 'Benzin (95)' : 'LPG (Otogaz)';
-              return (
-                <Pressable
-                  key={type}
-                  style={[styles.fuelTypeBtn, active && styles.fuelTypeBtnActive]}
-                  onPress={() => setSelectedFuelType(type)}
-                >
-                  <Text style={[styles.fuelTypeBtnText, active && styles.fuelTypeBtnTextActive]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {(['motorin', 'benzin', 'lpg'] as FuelType[]).map((type) => <Pressable accessibilityRole="button" key={type} onPress={() => { setSelectedFuelType(type); setDeltaInput(''); }} style={[styles.fuelTypeBtn, selectedFuelType === type && styles.fuelTypeBtnActive]}><Text style={[styles.fuelTypeBtnText, selectedFuelType === type && { color: "#FFFFFF" }]}>{type.toLocaleUpperCase('tr-TR')}</Text></Pressable>)}
           </View>
-
-          {/* Depo Hacmi Seçimi */}
-          <Text style={styles.inputSectionLabel}>Depo Hacmi (Litre):</Text>
+          <Text style={styles.inputSectionLabel}>Depo hacmi (litre)</Text>
           <View style={styles.literChipsRow}>
-            {[30, 40, 50, 60].map((lit) => {
-              const active = tankLiters === lit;
-              return (
-                <Pressable
-                  key={lit}
-                  style={[styles.literChip, active && styles.literChipActive]}
-                  onPress={() => handleLitersChange(lit)}
-                >
-                  <Text style={[styles.literChipText, active && styles.literChipTextActive]}>
-                    {lit} Lt
-                  </Text>
-                </Pressable>
-              );
-            })}
-
-            <View style={styles.customLiterInputBox}>
-              <TextInput
-                style={styles.customLiterInput}
-                keyboardType="numeric"
-                value={customLitersInput}
-                onChangeText={handleCustomLitersText}
-                maxLength={4}
-              />
-              <Text style={styles.customLiterUnit}>Lt</Text>
-            </View>
+            {[30, 40, 50, 60].map((n) => <Pressable key={n} accessibilityRole="button" onPress={() => setLitersInput(String(n))} style={styles.literChip}><Text style={styles.literChipText}>{n} Lt</Text></Pressable>)}
+            <TextInput accessibilityLabel="Depo hacmi litre" value={litersInput} onChangeText={setLitersInput} keyboardType="decimal-pad" maxLength={6} style={styles.customLiterInput} />
           </View>
-
-          {/* Hesaplama Sonuç Tablosu */}
+          <Text style={styles.inputSectionLabel}>Litre başına değişim (TL) · indirim için eksi</Text>
+          <View style={styles.fuelTypeRow}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Değişimin işaretini değiştir" onPress={() => setDeltaInput((v) => v.startsWith('-') ? v.slice(1) : `-${v}`)} style={styles.literChip}><Text style={styles.literChipText}>+/−</Text></Pressable>
+            <TextInput accessibilityLabel="Litre başına değişim TL" placeholder="Örn. -1,50" placeholderTextColor={FintechTheme.colors.textMuted} value={deltaInput} onChangeText={setDeltaInput} keyboardType="numbers-and-punctuation" maxLength={9} style={[styles.customLiterInput, { flex: 1 }]} />
+          </View>
           <View style={styles.calcResultsBox}>
-            <View style={styles.calcResultRow}>
-              <Text style={styles.calcResultLabel}>Güncel Depo Dolum Tutarı ({tankLiters} Litre):</Text>
-              <Text style={styles.calcResultCurrent}>
-                {formatNumber(currentTotal, 2)} TL
-              </Text>
-            </View>
-
-            <View style={styles.calcResultRow}>
-              <Text style={styles.calcResultLabel}>Olası Zam / İndirim Farkı:</Text>
-              <Text
-                style={[
-                  styles.calcResultDelta,
-                  deltaTotal > 0
-                    ? { color: FintechTheme.colors.down }
-                    : deltaTotal < 0
-                    ? { color: FintechTheme.colors.up }
-                    : { color: FintechTheme.colors.neutral },
-                ]}
-              >
-                {deltaTotal > 0 ? `+${formatNumber(deltaTotal, 2)} TL Fark` : deltaTotal < 0 ? `${formatNumber(deltaTotal, 2)} TL Tasarruf` : '0,00 TL'}
-              </Text>
-            </View>
-
-            <View style={styles.calcDivider} />
-
-            <View style={styles.calcResultRowHighlight}>
-              <Text style={styles.calcHighlightLabel}>Tahmini Yeni Depo Tutarı:</Text>
-              <Text style={styles.calcHighlightValue}>
-                {formatNumber(newTotal, 2)} TL
-              </Text>
-            </View>
-
-            {deltaTotal > 0 && (
-              <View style={styles.tipBox}>
-                <Info size={14} color={FintechTheme.colors.gold} />
-                <Text style={styles.tipText}>
-                  Zam öncesinde deponuzu doldurarak yaklaşık {formatNumber(deltaTotal, 2)} TL tasarruf sağlayabilirsiniz.
-                </Text>
-              </View>
-            )}
-            {deltaTotal < 0 && (
-              <View style={styles.tipBox}>
-                <Info size={14} color={FintechTheme.colors.up} />
-                <Text style={styles.tipText}>
-                  İndirim ihtimali bulunduğundan acil değilse deponuzu indirim yansıdıktan sonra doldurmanız önerilir.
-                </Text>
-              </View>
-            )}
+            <View style={styles.calcResultRow}><Text style={styles.calcResultLabel}>{prices?.isStale ? 'Son kayıtla depo tutarı:' : 'Kaynak fiyatıyla depo tutarı:'}</Text><Text style={styles.calcResultCurrent}>{scenario.currentTotal === null ? 'Veri yok' : `${formatNumber(scenario.currentTotal, 2)} TL`}</Text></View>
+            <View style={styles.calcResultRow}><Text style={styles.calcResultLabel}>Girdiğiniz senaryonun farkı:</Text><Text style={styles.calcResultDelta}>{scenario.deltaTotal === null ? 'Değişim girin' : `${formatNumber(scenario.deltaTotal, 2)} TL`}</Text></View>
+            <View style={styles.calcResultRowHighlight}><Text style={styles.calcHighlightLabel}>Senaryoya göre depo tutarı:</Text><Text style={styles.calcHighlightValue}>{scenario.newTotal === null ? 'Hesaplanamadı' : `${formatNumber(scenario.newTotal, 2)} TL`}</Text></View>
           </View>
         </View>
-
-        <View style={styles.footerInfo}>
-          <Text style={styles.footerInfoText}>
-            Akaryakıt verileri Opet dağıtıcı tavan fiyatlarından ve EPDK Akdeniz CIF maliyet endeksinden derlenmektedir. Fiyatlar il ve istasyon bazında ufak serbest piyasa farklılıkları gösterebilir.
-          </Text>
-        </View>
+        <View style={styles.footerInfo}><Info size={14} color={FintechTheme.colors.textMuted} /><Text style={styles.footerInfoText}>Fiyatlar Opet kaynağından sorgulanır; erişim başarısızsa en fazla 24 saatlik gerçek kayıt zamanı ile gösterilir. Haberler yayıncıların bildirimleridir. Uygulama EPDK adına tahmin üretmez.</Text></View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -604,9 +201,6 @@ const styles = StyleSheet.create({
     borderColor: FintechTheme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  refreshBtnPressed: {
-    backgroundColor: FintechTheme.colors.surfaceHighlight,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -676,30 +270,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: FintechTheme.colors.border,
   },
-  fuelCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  fuelIconBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fuelBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  fuelBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: FintechTheme.colors.textMuted,
-  },
   fuelName: {
     fontSize: 13,
     fontWeight: '600',
@@ -713,17 +283,12 @@ const styles = StyleSheet.create({
     ...FintechTheme.typography.tabularNums,
     marginBottom: 2,
   },
-  currencyUnit: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: FintechTheme.colors.textMuted,
-  },
   fuelSubText: {
     fontSize: 10,
     color: FintechTheme.colors.textMuted,
   },
 
-  // Tahmin Kartı
+  // Kaynak haberleri
   predictionCard: {
     backgroundColor: FintechTheme.colors.surface,
     borderRadius: 16,
@@ -732,36 +297,10 @@ const styles = StyleSheet.create({
     borderColor: FintechTheme.colors.border,
     marginBottom: 14,
   },
-  predCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  predTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
   predCardTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: FintechTheme.colors.text,
-  },
-  epdkBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  epdkBadgeText: {
-    fontSize: 10,
-    color: FintechTheme.colors.textMuted,
-    fontWeight: '600',
   },
   factorRow: {
     flexDirection: 'row',
@@ -777,96 +316,28 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  factorDivider: {
-    width: 1,
-    backgroundColor: FintechTheme.colors.border,
-    marginVertical: 2,
-  },
   factorLabel: {
     fontSize: 10,
     color: FintechTheme.colors.textMuted,
     marginBottom: 4,
   },
-  factorValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
   factorValue: {
+    color: FintechTheme.colors.text,
     fontSize: 13,
     fontWeight: '700',
     ...FintechTheme.typography.tabularNums,
   },
-  gaugeContainer: {
-    marginBottom: 14,
-  },
-  gaugeScaleLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  gaugeLabelText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  gaugeTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: FintechTheme.colors.surfaceHighlight,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  gaugeSegmentGreen: {
-    flex: 1,
-    backgroundColor: FintechTheme.colors.up,
-    opacity: 0.8,
-  },
-  gaugeSegmentNeutral: {
-    flex: 1,
-    backgroundColor: FintechTheme.colors.neutral,
-    opacity: 0.4,
-  },
-  gaugeSegmentRed: {
-    flex: 1,
-    backgroundColor: FintechTheme.colors.down,
-    opacity: 0.8,
-  },
-  gaugePointer: {
-    position: 'absolute',
-    top: -3,
-    width: 6,
-    height: 14,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#000000',
-    marginLeft: -3,
-  },
   decisionBox: {
+    borderColor: FintechTheme.colors.border,
+    backgroundColor: FintechTheme.colors.backgroundSecondary,
+    gap: 8,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
   },
-  decisionBoxHike: {
-    backgroundColor: FintechTheme.colors.downSoft,
-    borderColor: 'rgba(255, 59, 48, 0.4)',
-  },
-  decisionBoxDiscount: {
-    backgroundColor: FintechTheme.colors.upSoft,
-    borderColor: 'rgba(0, 192, 118, 0.4)',
-  },
-  decisionBoxStable: {
-    backgroundColor: 'rgba(148, 163, 184, 0.1)',
-    borderColor: FintechTheme.colors.border,
-  },
-  decisionTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
   decisionTitle: {
+    color: FintechTheme.colors.text,
+    lineHeight: 21,
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.3,
@@ -877,40 +348,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 12,
   },
-  impactGrid: {
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-    borderRadius: 8,
-    padding: 10,
-  },
-  impactItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  impactLabel: {
-    fontSize: 12,
-    color: FintechTheme.colors.textMuted,
-  },
-  impactValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    ...FintechTheme.typography.tabularNums,
-  },
-
-  // Depo Hesaplayıcı
   calculatorCard: {
     backgroundColor: FintechTheme.colors.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: FintechTheme.colors.border,
-    marginBottom: 14,
-  },
-  calcHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: 14,
   },
   calcTitleRow: {
@@ -952,10 +395,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: FintechTheme.colors.textMuted,
   },
-  fuelTypeBtnTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
   literChipsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -971,42 +410,22 @@ const styles = StyleSheet.create({
     borderColor: FintechTheme.colors.border,
     alignItems: 'center',
   },
-  literChipActive: {
-    backgroundColor: FintechTheme.colors.surfaceHighlight,
-    borderColor: FintechTheme.colors.accent,
-  },
   literChipText: {
     fontSize: 12,
     fontWeight: '600',
     color: FintechTheme.colors.textMuted,
   },
-  literChipTextActive: {
-    color: FintechTheme.colors.accent,
-    fontWeight: '700',
-  },
-  customLiterInputBox: {
-    flex: 1.2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: FintechTheme.colors.backgroundSecondary,
-    borderRadius: 8,
+  customLiterInput: {
+    minHeight: 40,
     borderWidth: 1,
     borderColor: FintechTheme.colors.border,
-    paddingHorizontal: 8,
-    height: 36,
-  },
-  customLiterInput: {
+    borderRadius: 8,
     flex: 1,
     color: FintechTheme.colors.text,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
     paddingVertical: 0,
-  },
-  customLiterUnit: {
-    color: FintechTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
   },
   calcResultsBox: {
     backgroundColor: FintechTheme.colors.backgroundSecondary,
@@ -1016,6 +435,8 @@ const styles = StyleSheet.create({
     borderColor: FintechTheme.colors.border,
   },
   calcResultRow: {
+    flexWrap: 'wrap',
+    gap: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1032,16 +453,14 @@ const styles = StyleSheet.create({
     ...FintechTheme.typography.tabularNums,
   },
   calcResultDelta: {
+    color: FintechTheme.colors.text,
     fontSize: 13,
     fontWeight: '700',
     ...FintechTheme.typography.tabularNums,
   },
-  calcDivider: {
-    height: 1,
-    backgroundColor: FintechTheme.colors.border,
-    marginVertical: 8,
-  },
   calcResultRowHighlight: {
+    flexWrap: 'wrap',
+    gap: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1057,21 +476,6 @@ const styles = StyleSheet.create({
     color: FintechTheme.colors.accent,
     ...FintechTheme.typography.tabularNums,
   },
-  tipBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 10,
-  },
-  tipText: {
-    flex: 1,
-    fontSize: 11,
-    color: FintechTheme.colors.textSecondary,
-    lineHeight: 16,
-  },
   footerInfo: {
     paddingHorizontal: 8,
     paddingTop: 8,
@@ -1083,3 +487,4 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
+

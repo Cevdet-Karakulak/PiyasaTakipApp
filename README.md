@@ -55,7 +55,24 @@ Her finansal enstrüman için mini sparkline grafiği, en yüksek/en düşük fi
 Kullanıcılar alış fiyatını ve miktarını girerek varlıklarını portföye ekler. Uygulama, piyasa dalgalandıkça portföyün toplam piyasa değerini, toplam kâr/zararını ve varlık bazlı getiri oranlarını anlık olarak hesaplayıp görselleştirir.
 
 ### 4. İl Bazlı Akaryakıt Takip Modülü (`fuel.tsx`)
-Büyükşehirler başta olmak üzere il seçimi yapılarak distribütörlerin güncel Benzin, Motorin ve LPG fiyatları karşılaştırmalı olarak listelenir.
+Opet kaynağından seçilen ile ait örnek bir ilçenin benzin ve motorin fiyatları sorgulanır; ilçe ve sorgu zamanı gösterilir. İstanbul yakaları ilçe adına göre ayrılır. Doğrulanmış LPG verisi olmadığı için fiyat üretilmez. Bağlantı hatasında en fazla 24 saatlik gerçek kayıt, eski olduğu belirtilerek gösterilir; kayıt yoksa fiyat alanı boş kalır.
+
+Zam/indirim bölümü Google Haberler ve Bloomberg HT RSS üzerinden son 3 güne ait ilgili başlıkları, yayın tarihini ve kaynak bağlantısını gösterir. Haberler resmî fiyat teyidi sayılmaz. Kaynakların erişimi garanti değildir; hata, boş sonuç ve teyit eksikliği açıkça belirtilir. Brent/döviz hareketinden pompa fiyatı veya EPDK kararı üretilmez. Depo hesaplayıcısında litre başına senaryo tutarını kullanıcı girer; boş girdi sıfır kabul edilmez.
+
+### Grafik düzeltmesi ve kontroller
+
+Geçmiş fiyatlar çalışan `/batch` yolundan, hata olursa `/chart` yolundan alınır. Worker tekli sembol yolunda `GC%3DF` ve `USDTRY%3DX` değerlerini yalnızca bir kez çözer; eski çift kodlama 404 hatasına neden oluyordu. Mobil düzeltme mevcut Worker'ın batch yoluyla çalışır; Worker değişikliği ayrıca dağıtılabilir.
+
+Altın grafikleri dönemin ons vadeli fiyatı ve USD/TRY geçmişinden teorik has değer olarak hesaplanır; Truncgil alış/satış geçmişi değildir. Geçmiş seri bugünkü fiyata oranlanmaz. Dönemler birbirinden bağımsızdır; başarısız istekte sahte zamanlarla gün içi seri gösterilmez. Kaynak hatasında yeniden deneme seçeneği vardır.
+
+```bash
+npm ci
+npm test
+npm run typecheck
+npm run lint
+```
+
+Regresyon testleri geçmiş dönemleri, tarih/kur eşlemesini, hata/önbellek davranışını, Worker sembol kodlamasını ve akaryakıt veri eksikliğini kapsar. Yerel kontroller ve canlı geçmiş API doğrulaması imzalı iOS/Android derlemesi veya fiziksel cihaz testi yerine geçmez.
 
 ---
 
@@ -214,3 +231,4 @@ npx wrangler deploy
 <p align="center">
   <sub>Piyasaların nabzını tutun, fırsatları yakalayın. 📈⚡</sub>
 </p>
+
