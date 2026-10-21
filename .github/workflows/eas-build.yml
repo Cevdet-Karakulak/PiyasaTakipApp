@@ -159,3 +159,14 @@ jobs:
           name: PiyasaRadari-android-${{ inputs.build_number || '5' }}
           path: ./PiyasaRadari.aab
           retention-days: 7
+
+      - name: Android APK Derle (Doğrudan Kurulum)
+        run: npx --yes eas-cli@latest build --platform android --profile apk --non-interactive --local --output ./PiyasaRadari.apk
+
+      - name: Android APK Dosyasını GitHub'a Yükle (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PiyasaRadari-apk-${{ github.run_number }}
+          path: ./PiyasaRadari.apk
+          if-no-files-found: error
+          retention-days: 7
