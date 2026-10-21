@@ -23,208 +23,78 @@ export const FUEL_PROVINCES: FuelProvince[] = [
 ];
 
 export interface FuelPrices {
-  benzin: number;
-  motorin: number;
-  lpg: number;
-  updatedAt: number;
+  benzin: number | null;
+  motorin: number | null;
+  lpg: number | null;
+  /** Time the source was successfully queried, not a source publication time. */
+  updatedAt: number | null;
   provinceName: string;
-  source: 'live' | 'cache' | 'fallback';
+  districtName?: string;
+  source: 'live' | 'cache' | 'unavailable';
+  isStale: boolean;
 }
 
-const FUEL_CACHE_KEY_PREFIX = 'finanspulse:fuel-cache:';
-const FUEL_CACHE_TTL = 30 * 60 * 1000; // 30 dakika
-
-/** Güvenilir baz fiyat tablosu (Ağ hatası veya çevrimdışı durum için) */
-const FALLBACK_PRICES: Record<string, { benzin: number; motorin: number; lpg: number }> = {
-  '34_avrupa': { benzin: 83.69, motorin: 96.53, lpg: 30.85 },
-  '34_anadolu': { benzin: 83.65, motorin: 96.48, lpg: 30.75 },
-  '06': { benzin: 84.84, motorin: 97.72, lpg: 31.40 },
-  '35': { benzin: 85.12, motorin: 98.02, lpg: 31.25 },
-  '16': { benzin: 84.94, motorin: 97.62, lpg: 31.15 },
-  '07': { benzin: 86.13, motorin: 99.07, lpg: 31.80 },
-  '01': { benzin: 85.60, motorin: 98.45, lpg: 31.50 },
-  '22': { benzin: 84.98, motorin: 97.88, lpg: 31.30 },
-  '61': { benzin: 85.80, motorin: 98.70, lpg: 31.65 },
-  '21': { benzin: 86.25, motorin: 99.15, lpg: 32.10 },
-  '42': { benzin: 85.40, motorin: 98.20, lpg: 31.45 },
-  '55': { benzin: 85.50, motorin: 98.35, lpg: 31.55 },
-};
-
-interface OpetPriceItem {
-  id: string;
-  productName: string;
-  productShortName: string;
-  amount: number;
-  productCode: string;
-}
+// v2 discards v1's synthetic LPG and hardcoded fallback prices.
+const FUEL_CACHE_KEY_PREFIX = 'finanspulse:fuel-cache:v2:';
+const FUEL_CACHE_TTL = 30 * 60 * 1000;
+const MAX_OFFLINE_AGE = 24 * 60 * 60 * 1000;
 
 interface OpetDistrictItem {
   provinceCode: number;
-  provinceName: string;
-  districtCode: string;
   districtName: string;
-  prices: OpetPriceItem[];
+  prices: { productCode: string; productName: string; amount: number }[];
 }
 
-/**
- * Seçilen il için güncel akaryakıt (Benzin, Motorin, LPG) fiyatlarını getirir.
- */
+const normalize = (s: string) => s.toLocaleLowerCase('tr-TR').replace(/[^a-zçğıöşü]/g, '');
+const ASIAN_DISTRICTS = ['adalar', 'ataşehir', 'beykoz', 'çekmeköy', 'kadıköy', 'kartal', 'maltepe', 'pendik', 'sancaktepe', 'sultanbeyli', 'şile', 'tuzla', 'ümraniye', 'üsküdar'];
+const EUROPEAN_DISTRICTS = ['arnavutköy', 'avcılar', 'bağcılar', 'bahçelievler', 'bakırköy', 'başakşehir', 'bayrampaşa', 'beşiktaş', 'beylikdüzü', 'beyoğlu', 'büyükçekmece', 'çatalca', 'esenler', 'esenyurt', 'eyüp', 'eyüpsultan', 'fatih', 'gaziosmanpaşa', 'güngören', 'kağıthane', 'küçükçekmece', 'sarıyer', 'silivri', 'sultangazi', 'şişli', 'zeytinburnu'];
+
+export function parseFuelPrices(data: unknown, province: FuelProvince, now = Date.now()): FuelPrices | null {
+  if (!Array.isArray(data)) return null;
+  const candidates = (data as OpetDistrictItem[]).filter((d) => d && d.provinceCode === province.code && Array.isArray(d.prices));
+  const districts = province.id === '34_anadolu' ? ASIAN_DISTRICTS : province.id === '34_avrupa' ? EUROPEAN_DISTRICTS : null;
+  const district = candidates.find((d) => !districts || (typeof d.districtName === 'string' && districts.includes(normalize(d.districtName))));
+  if (!district) return null;
+  const price = (codes: string[]) => {
+    for (const code of codes) {
+      const p = district.prices.find((item) => item?.productCode === code && typeof item.amount === 'number' && Number.isFinite(item.amount) && item.amount > 0);
+      if (p) return p.amount;
+    }
+    return null;
+  };
+  const benzin = price(['A100']);
+  const motorin = price(['A121', 'A128']);
+  // No verified LPG product mapping: do not manufacture an LPG quote from petrol.
+  if (benzin === null && motorin === null) return null;
+  return { benzin, motorin, lpg: null, provinceName: province.name, districtName: district.districtName, updatedAt: now, source: 'live', isStale: false };
+}
+
 export async function fetchProvinceFuelPrices(province: FuelProvince, forceRefresh = false): Promise<FuelPrices> {
   const cacheKey = `${FUEL_CACHE_KEY_PREFIX}${province.id}`;
-
-  if (!forceRefresh) {
-    try {
-      const cached = await AsyncStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached) as FuelPrices;
-        if (Date.now() - parsed.updatedAt < FUEL_CACHE_TTL) {
-          return { ...parsed, source: 'cache' };
-        }
-      }
-    } catch {
-      // Önbellek hatasında canlı isteğe devam et
-    }
-  }
-
+  let cached: FuelPrices | null = null;
   try {
-    const rawUrl = `https://api.opet.com.tr/api/fuelprices/prices?ProvinceCode=${province.code}`;
-    const url = resolveApiUrl(rawUrl);
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-      },
-    });
-    clearTimeout(timeout);
-
-    if (res.ok) {
-      const data = (await res.json()) as OpetDistrictItem[];
-      if (Array.isArray(data) && data.length > 0) {
-        // İlk ilçenin veya merkezi ilçenin fiyatlarını al
-        const district = data[0];
-        let benzinPrice: number | undefined;
-        let motorinPrice: number | undefined;
-
-        for (const p of district.prices) {
-          if (p.productCode === 'A100') benzinPrice = p.amount;
-          if (p.productCode === 'A121' || p.productCode === 'A128') {
-            if (!motorinPrice || p.amount > 0) motorinPrice = p.amount;
-          }
-        }
-
-        const fallback = FALLBACK_PRICES[province.id] ?? FALLBACK_PRICES['34_avrupa'];
-        const finalBenzin = benzinPrice && benzinPrice > 0 ? benzinPrice : fallback.benzin;
-        const finalMotorin = motorinPrice && motorinPrice > 0 ? motorinPrice : fallback.motorin;
-        const finalLpg = Number((finalBenzin * 0.368).toFixed(2));
-
-        const result: FuelPrices = {
-          benzin: finalBenzin,
-          motorin: finalMotorin,
-          lpg: finalLpg,
-          updatedAt: Date.now(),
-          provinceName: province.name,
-          source: 'live',
-        };
-
-        AsyncStorage.setItem(cacheKey, JSON.stringify(result)).catch(() => {});
-        return result;
-      }
+    const text = await AsyncStorage.getItem(cacheKey);
+    if (text) {
+      const value = JSON.parse(text) as FuelPrices;
+      const valid = (n: unknown) => n === null || (typeof n === 'number' && Number.isFinite(n) && n > 0);
+      if (typeof value.updatedAt === 'number' && value.updatedAt <= Date.now() && Date.now() - value.updatedAt < MAX_OFFLINE_AGE && value.provinceName === province.name && valid(value.benzin) && valid(value.motorin) && value.lpg === null && (value.benzin !== null || value.motorin !== null)) cached = value;
     }
-  } catch (err) {
-    console.warn(`Opet akaryakıt verisi (${province.name}) alınamadı, yedek değer kullanılıyor:`, err);
+  } catch { /* Try network if cache is corrupt. */ }
+  if (!forceRefresh && cached?.updatedAt && Date.now() - cached.updatedAt < FUEL_CACHE_TTL) {
+    return { ...cached, source: 'cache', isStale: false };
   }
-
-  // Fallback
-  const fallback = FALLBACK_PRICES[province.id] ?? FALLBACK_PRICES['34_avrupa'];
-  return {
-    benzin: fallback.benzin,
-    motorin: fallback.motorin,
-    lpg: fallback.lpg,
-    updatedAt: Date.now(),
-    provinceName: province.name,
-    source: 'fallback',
-  };
-}
-
-/* ------------------------------------------------------------------ */
-/* Akaryakıt Zam / İndirim Tahmin Motoru (EPDK & CIF Akdeniz Modeli)     */
-/* ------------------------------------------------------------------ */
-
-export type FuelHikeStatus = 'HIKE_RISK' | 'DISCOUNT_CHANCE' | 'STABLE';
-
-export interface FuelPredictionResult {
-  compositeChange: number; // Bileşik maliyet değişimi (%)
-  status: FuelHikeStatus;
-  title: string;
-  badgeText: string;
-  description: string;
-  estimatedBenzinDelta: number; // TL / Litre
-  estimatedMotorinDelta: number; // TL / Litre
-  brentWeight: number; // %60
-  currencyWeight: number; // %40
-}
-
-/**
- * EPDK & CIF Akdeniz simülasyonu:
- * Rafineri maliyet etkisi = (%60 Brent Petrol değişimi) + (%40 Dolar/TL değişimi)
- * Pompa yansıması: Ürün maliyeti + %20 KDV etkisi
- */
-export function calculateFuelPrediction(
-  brentChangePercent: number = 0,
-  usdTryChangePercent: number = 0,
-  benzinPrice: number = 84,
-  motorinPrice: number = 97,
-): FuelPredictionResult {
-  const brentWeight = 0.6;
-  const currencyWeight = 0.4;
-
-  const compositeChange = brentChangePercent * brentWeight + usdTryChangePercent * currencyWeight;
-
-  // Ham ürün payı (~%45) ve KDV (%20) çarpanı: (Fiyat * 0.45 * (değişim/100)) * 1.20
-  const benzinDelta = Number((benzinPrice * 0.45 * (compositeChange / 100) * 1.2).toFixed(2));
-  const motorinDelta = Number((motorinPrice * 0.45 * (compositeChange / 100) * 1.2).toFixed(2));
-
-  if (compositeChange >= 1.2) {
-    return {
-      compositeChange: Number(compositeChange.toFixed(2)),
-      status: 'HIKE_RISK',
-      title: 'ZAM RİSKİ YÜKSEK',
-      badgeText: '⚠️ YÜKSEK ZAM RİSKİ',
-      description: 'Brent petrol ve döviz kurundaki yukarı yönlü hareket rafineri maliyetlerini artırıyor. Pompa fiyatlarına zam yansıması bekleniyor.',
-      estimatedBenzinDelta: benzinDelta > 0 ? benzinDelta : 0.85,
-      estimatedMotorinDelta: motorinDelta > 0 ? motorinDelta : 1.15,
-      brentWeight: 60,
-      currencyWeight: 40,
-    };
-  }
-
-  if (compositeChange <= -1.2) {
-    return {
-      compositeChange: Number(compositeChange.toFixed(2)),
-      status: 'DISCOUNT_CHANCE',
-      title: 'İNDİRİM İHTİMALİ',
-      badgeText: '🟢 İNDİRİM İHTİMALİ',
-      description: 'Küresel petrol ve döviz kurundaki gevşeme Akdeniz rafineri maliyetlerini düşürüyor. Pompa fiyatlarına indirim potansiyeli mevcut.',
-      estimatedBenzinDelta: benzinDelta < 0 ? benzinDelta : -0.75,
-      estimatedMotorinDelta: motorinDelta < 0 ? motorinDelta : -0.95,
-      brentWeight: 60,
-      currencyWeight: 40,
-    };
-  }
-
-  return {
-    compositeChange: Number(compositeChange.toFixed(2)),
-    status: 'STABLE',
-    title: 'POMPA FİYATLARI STABİL',
-    badgeText: '⚖️ DEĞİŞİM BEKLENMİYOR',
-    description: 'Bileşik maliyet hareketleri EPDK eşik sınırlarının altında kalıyor. Kısa vadede pompa fiyatlarında değişim beklenmiyor.',
-    estimatedBenzinDelta: 0,
-    estimatedMotorinDelta: 0,
-    brentWeight: 60,
-    currencyWeight: 40,
-  };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const url = resolveApiUrl(`https://api.opet.com.tr/api/fuelprices/prices?ProvinceCode=${province.code}`);
+    const res = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(`Opet HTTP ${res.status}`);
+    const prices = parseFuelPrices(await res.json(), province);
+    if (!prices) throw new Error('Kaynakta uygun ilçe/ürün fiyatı yok.');
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(prices)).catch(() => {});
+    return prices;
+  } catch {
+    if (cached) return { ...cached, source: 'cache', isStale: true };
+    return { benzin: null, motorin: null, lpg: null, updatedAt: null, provinceName: province.name, source: 'unavailable', isStale: true };
+  } finally { clearTimeout(timeout); }
 }

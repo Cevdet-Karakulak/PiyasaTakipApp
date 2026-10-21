@@ -65,13 +65,15 @@ export const YAHOO_SYMBOLS: YahooSymbol[] = [
   'EKGYO.IS',
 ];
 
-export const GOLD_SYMBOLS: GoldSymbol[] = ['GRAM_ALTIN', 'CEYREK_ALTIN', 'CUMHURIYET_ALTINI'];
+export const GOLD_SYMBOLS: GoldSymbol[] = ['GRAM_ALTIN', 'CEYREK_ALTIN', 'YARIM_ALTIN', 'TAM_ALTIN', 'CUMHURIYET_ALTINI'];
 
 export const ASSET_DISPLAY_ORDER: MarketSymbol[] = [
   'USDTRY=X',
   'EURTRY=X',
   'GRAM_ALTIN',
   'CEYREK_ALTIN',
+  'YARIM_ALTIN',
+  'TAM_ALTIN',
   'CUMHURIYET_ALTINI',
   'GC=F',
   'BZ=F',
@@ -109,9 +111,11 @@ export const ASSETS: Record<MarketSymbol, AssetDefinition> = {
   'EURTRY=X': { symbol: 'EURTRY=X', name: 'Euro / TL', shortName: 'EUR/TRY', category: 'currency', currency: 'TRY', decimals: 4 },
   GRAM_ALTIN: { symbol: 'GRAM_ALTIN', name: 'Gram Altın', shortName: 'GRAM ALTIN', category: 'gold', currency: 'TRY', decimals: 2 },
   CEYREK_ALTIN: { symbol: 'CEYREK_ALTIN', name: 'Çeyrek Altın', shortName: 'ÇEYREK', category: 'gold', currency: 'TRY', decimals: 2 },
+  YARIM_ALTIN: { symbol: 'YARIM_ALTIN', name: 'Yarım Altın (Ziynet)', shortName: 'YARIM', category: 'gold', currency: 'TRY', decimals: 2 },
+  TAM_ALTIN: { symbol: 'TAM_ALTIN', name: 'Tam Altın (Ziynet)', shortName: 'TAM', category: 'gold', currency: 'TRY', decimals: 2 },
   CUMHURIYET_ALTINI: {
     symbol: 'CUMHURIYET_ALTINI',
-    name: 'Cumhuriyet Altını',
+    name: 'Cumhuriyet Altını (Ata)',
     shortName: 'CUMHURİYET',
     category: 'gold',
     currency: 'TRY',
@@ -151,5 +155,8 @@ export const TRUNCGIL_KEY_MAP: Partial<Record<MarketSymbol, string>> = {
   'XU100.IS': 'XU100',
   GRAM_ALTIN: 'GRA',
   CEYREK_ALTIN: 'CEYREKALTIN',
+  YARIM_ALTIN: 'YARIMALTIN',
+  TAM_ALTIN: 'TAMALTIN',
   CUMHURIYET_ALTINI: 'CUMHURIYETALTINI',
 };
+

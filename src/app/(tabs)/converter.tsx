@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Coins } from 'lucide-react-native';
 
+import type { QuoteMap } from '@/types/market';
 import { FintechTheme } from '@/constants/fintechTheme';
 import { useMarketData } from '@/hooks/useMarketData';
 import { formatNumber } from '@/utils/format';
@@ -20,7 +21,7 @@ interface ConversionAsset {
   shortName: string;
   symbolRef?: string;
   // TRY bazında 1 biriminin fiyatını hesaplayan fonksiyon
-  getTryRate: (quotes: any) => number;
+  getTryRate: (quotes: QuoteMap) => number | null;
 }
 
 const CONVERTER_ITEMS: ConversionAsset[] = [
@@ -35,35 +36,49 @@ const CONVERTER_ITEMS: ConversionAsset[] = [
     name: 'Amerikan Doları',
     shortName: 'USD',
     symbolRef: 'USDTRY=X',
-    getTryRate: (quotes) => quotes['USDTRY=X']?.price ?? 49.4,
+    getTryRate: (quotes) => quotes['USDTRY=X']?.price ?? null,
   },
   {
     id: 'EUR',
     name: 'Euro',
     shortName: 'EUR',
     symbolRef: 'EURTRY=X',
-    getTryRate: (quotes) => quotes['EURTRY=X']?.price ?? 55.5,
+    getTryRate: (quotes) => quotes['EURTRY=X']?.price ?? null,
   },
   {
     id: 'GRAM_ALTIN',
     name: 'Gram Altın (24 Ayar)',
     shortName: 'GRAM',
     symbolRef: 'GRAM_ALTIN',
-    getTryRate: (quotes) => quotes['GRAM_ALTIN']?.price ?? 6604,
+    getTryRate: (quotes) => quotes['GRAM_ALTIN']?.price ?? null,
   },
   {
     id: 'CEYREK_ALTIN',
     name: 'Çeyrek Altın',
     shortName: 'ÇEYREK',
     symbolRef: 'CEYREK_ALTIN',
-    getTryRate: (quotes) => quotes['CEYREK_ALTIN']?.price ?? 10761,
+    getTryRate: (quotes) => quotes['CEYREK_ALTIN']?.price ?? null,
+  },
+  {
+    id: 'YARIM_ALTIN',
+    name: 'Yarım Altın (Ziynet)',
+    shortName: 'YARIM',
+    symbolRef: 'YARIM_ALTIN',
+    getTryRate: (quotes) => quotes['YARIM_ALTIN']?.price ?? null,
+  },
+  {
+    id: 'TAM_ALTIN',
+    name: 'Tam Altın (Ziynet)',
+    shortName: 'TAM',
+    symbolRef: 'TAM_ALTIN',
+    getTryRate: (quotes) => quotes['TAM_ALTIN']?.price ?? null,
   },
   {
     id: 'CUMHURIYET_ALTINI',
     name: 'Cumhuriyet Altını',
     shortName: 'CUMHURİYET',
     symbolRef: 'CUMHURIYET_ALTINI',
-    getTryRate: (quotes) => quotes['CUMHURIYET_ALTINI']?.price ?? 44279,
+    getTryRate: (quotes) => quotes['CUMHURIYET_ALTINI']?.price ?? null,
   },
   {
     id: 'GC=F',
@@ -71,9 +86,9 @@ const CONVERTER_ITEMS: ConversionAsset[] = [
     shortName: 'ONS',
     symbolRef: 'GC=F',
     getTryRate: (quotes) => {
-      const onsUsd = quotes['GC=F']?.price ?? 4180;
-      const usdTry = quotes['USDTRY=X']?.price ?? 49.4;
-      return onsUsd * usdTry;
+      const onsUsd = quotes['GC=F']?.price;
+      const usdTry = quotes['USDTRY=X']?.price ?? null;
+      return onsUsd && usdTry ? onsUsd * usdTry : null;
     },
   },
 ];
@@ -87,7 +102,7 @@ export default function ConverterScreen() {
   const sourceUnitPriceInTry = sourceAsset.getTryRate(quotes);
 
   const parsedAmount = parseFloat(amountStr.replace(',', '.')) || 0;
-  const totalValueInTry = parsedAmount * sourceUnitPriceInTry;
+  const totalValueInTry = sourceUnitPriceInTry !== null ? parsedAmount * sourceUnitPriceInTry : null;
 
   const quickPresets = ['1', '10', '50', '100', '500', '1000'];
 
@@ -157,7 +172,7 @@ export default function ConverterScreen() {
 
           <View style={styles.rateNote}>
             <Text style={styles.rateNoteText}>
-              1 {sourceAsset.shortName} = {formatNumber(sourceUnitPriceInTry, 2)} TL (Canlı Kur)
+              1 {sourceAsset.shortName} = {formatNumber(sourceUnitPriceInTry, 2)} TL (Kaynak fiyatı)
             </Text>
           </View>
         </View>
@@ -170,7 +185,7 @@ export default function ConverterScreen() {
         <View style={styles.resultsCard}>
           {CONVERTER_ITEMS.filter((item) => item.id !== sourceId).map((target, idx, arr) => {
             const targetUnitPriceInTry = target.getTryRate(quotes);
-            const convertedAmount = targetUnitPriceInTry > 0 ? totalValueInTry / targetUnitPriceInTry : 0;
+            const convertedAmount = targetUnitPriceInTry !== null && targetUnitPriceInTry > 0 && totalValueInTry !== null ? totalValueInTry / targetUnitPriceInTry : null;
             const isLast = idx === arr.length - 1;
 
             return (
@@ -182,7 +197,7 @@ export default function ConverterScreen() {
 
                 <View style={styles.targetValueCol}>
                   <Text style={styles.targetValue}>
-                    {formatNumber(convertedAmount, convertedAmount < 1 ? 4 : 2)}
+                    {formatNumber(convertedAmount, convertedAmount !== null && convertedAmount < 1 ? 4 : 2)}
                   </Text>
                   <Text style={styles.targetUnitRate}>
                     1 {target.shortName} = {formatNumber(targetUnitPriceInTry, 2)} TL
@@ -388,3 +403,4 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
+

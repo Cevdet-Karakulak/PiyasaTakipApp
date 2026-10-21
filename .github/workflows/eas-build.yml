@@ -35,7 +35,7 @@ jobs:
       - name: Node.js Kurulumu (NPM Önbellekli)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: CocoaPods Önbelleği (iOS Hızlandırma)
@@ -81,7 +81,7 @@ jobs:
           retention-days: 7
 
   build-android:
-    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.platform == 'both' || inputs.platform == 'android') }}
+    if: ${{ github.event_name == 'push' || inputs.platform == 'both' || inputs.platform == 'android' }}
     runs-on: ubuntu-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -108,7 +108,7 @@ jobs:
       - name: Node.js Kurulumu (NPM Önbellekli)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Java 17 Kurulumu

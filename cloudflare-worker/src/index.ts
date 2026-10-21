@@ -189,7 +189,12 @@ function extractSymbolFromPath(pathname: string): string | null {
   if (!lastPart || lastPart === 'chart' || lastPart === 'batch' || lastPart === 'v8') {
     return null;
   }
-  return lastPart.toUpperCase();
+  try {
+    const symbol = decodeURIComponent(lastPart).toUpperCase();
+    return /^[A-Z0-9^=.-]+$/.test(symbol) ? symbol : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -271,3 +276,4 @@ function jsonResponse(data: unknown, status = 200): Response {
     },
   });
 }
+

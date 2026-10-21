@@ -16,7 +16,7 @@ export interface NewsArticle {
   imageUrl?: string;
 }
 
-const NEWS_CACHE_KEY = 'finanspulse:news-cache-v1';
+const NEWS_CACHE_KEY = 'finanspulse:news-cache-v2';
 const NEWS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 dakika
 
 const BLOOMBERG_HT_RSS = 'https://www.bloomberght.com/rss';
@@ -110,7 +110,8 @@ function parseRssXml(xml: string, defaultSource: string): NewsArticle[] {
     if (!title || !link) continue;
 
     const parsedTime = pubDateStr ? Date.parse(pubDateStr) : NaN;
-    const publishedAt = Number.isNaN(parsedTime) ? Date.now() - index * 600000 : parsedTime;
+    if (!Number.isFinite(parsedTime) || parsedTime > Date.now() + 5 * 60_000) continue;
+    const publishedAt = parsedTime;
 
     articles.push({
       id: `${defaultSource}-${index}-${publishedAt}`,
@@ -129,65 +130,6 @@ function parseRssXml(xml: string, defaultSource: string): NewsArticle[] {
 
   return articles;
 }
-
-/** Yedek yerleşik haberler (Çevrimdışı veya aşırı ağ engeli durumunda gösterilir) */
-const FALLBACK_NEWS: NewsArticle[] = [
-  {
-    id: 'fb-1',
-    title: 'BIST 100 Endeksinde Bankacılık ve Havacılık Hisseleriyle Güçlü Seyir',
-    summary: 'Borsa İstanbul\'da BIST 100 endeksi, yabancı kurumların olumlu raporları ve bankacılık hisseleri liderliğinde işlem hacmini artırarak yükselişini sürdürüyor.',
-    link: 'https://www.bloomberght.com/borsa',
-    source: 'Bloomberg HT',
-    pubDate: new Date().toUTCString(),
-    publishedAt: Date.now() - 15 * 60 * 1000,
-    timeAgo: '15 dk önce',
-    category: 'BIST',
-  },
-  {
-    id: 'fb-2',
-    title: 'Ons Altın ve Gram Altında Küresel Jeopolitik Risk Fiyatlaması',
-    summary: 'Merkez bankalarının aralıksız rezerv altın alımları ve küresel faiz indirim döngüsüne ilişkin beklentiler altın fiyatlarını destekliyor.',
-    link: 'https://www.bloomberght.com/altin',
-    source: 'Bloomberg HT',
-    pubDate: new Date().toUTCString(),
-    publishedAt: Date.now() - 42 * 60 * 1000,
-    timeAgo: '42 dk önce',
-    category: 'Altın',
-  },
-  {
-    id: 'fb-3',
-    title: 'TCMB Rezervlerinde İstikrarlı Artış Eğilimi Devam Ediyor',
-    summary: 'Türkiye Cumhuriyet Merkez Bankası toplam brüt rezervleri ve swap hariç net rezerv pozisyonundaki toparlanma eğilimi piyasa güvenini destekliyor.',
-    link: 'https://www.bloomberght.com/tcmb-rezervlerinde-toparlanma-3791468',
-    source: 'Bloomberg HT',
-    pubDate: new Date().toUTCString(),
-    publishedAt: Date.now() - 75 * 60 * 1000,
-    timeAgo: '1 saat önce',
-    category: 'Makro',
-  },
-  {
-    id: 'fb-4',
-    title: 'Brent Petrol Fiyatlarında Arz Endişeleriyle Dalgalı Seyir',
-    summary: 'OPEC+ üretim kısıntısı stratejileri ve Ortadoğu enerji koridorundaki jeopolitik gelişmeler ham petrol kontratlarında oynaklığı artırıyor.',
-    link: 'https://www.bloomberght.com/enerji',
-    source: 'Bloomberg HT',
-    pubDate: new Date().toUTCString(),
-    publishedAt: Date.now() - 120 * 60 * 1000,
-    timeAgo: '2 saat önce',
-    category: 'Küresel',
-  },
-  {
-    id: 'fb-5',
-    title: 'Dolar/TL ve Euro/TL Paritesinde Küresel Veri Akışı İzleniyor',
-    summary: 'İç piyasada döviz kurları dengeli görünümünü korurken küresel dolar endeksi (DXY) ve ABD tahvil getirileri yakından izleniyor.',
-    link: 'https://www.bloomberght.com/doviz',
-    source: 'Bloomberg HT',
-    pubDate: new Date().toUTCString(),
-    publishedAt: Date.now() - 180 * 60 * 1000,
-    timeAgo: '3 saat önce',
-    category: 'Döviz',
-  },
-];
 
 /**
  * Gerçek ekonomi/piyasa haberlerini çeker.
@@ -283,5 +225,37 @@ export async function fetchLiveNews(forceRefresh = false): Promise<NewsArticle[]
     // ignore
   }
 
-  return FALLBACK_NEWS;
+  return [];
+}
+
+
+/** Fuel headlines are publisher reports, never automatic price-change confirmations. */
+export async function fetchFuelNews(): Promise<{ articles: NewsArticle[]; error: boolean; fetchedAt: number }> {
+  const googleUrl = 'https://news.google.com/rss/search?q=' + encodeURIComponent('akaryakıt (benzin OR motorin OR otogaz) (indirim OR zam) when:3d') + '&hl=tr&gl=TR&ceid=TR:tr';
+  const sources = [{ url: googleUrl, name: 'Google Haberler' }, { url: BLOOMBERG_HT_RSS, name: 'Bloomberg HT' }];
+  const results = await Promise.allSettled(sources.map(async (source) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 9000);
+    try {
+      const res = await fetch(resolveApiUrl(source.url), { signal: controller.signal, headers: { Accept: 'application/rss+xml, application/xml, text/xml' } });
+      if (!res.ok) throw new Error('Haber kaynağına ulaşılamadı.');
+      const xml = await res.text();
+      if (!/<rss[\s>]/i.test(xml)) throw new Error('Geçersiz haber yanıtı.');
+      return parseRssXml(xml, source.name);
+    } finally { clearTimeout(timeout); }
+  }));
+  const now = Date.now();
+  const byLink = new Map<string, NewsArticle>();
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue;
+    for (const article of result.value) {
+      const title = article.title.toLocaleLowerCase('tr-TR');
+      if (/akaryakıt|benzin|motorin|otogaz|lpg/.test(title) && /indirim|zam/.test(title) && article.publishedAt >= now - 3 * 86_400_000 && /^https:\/\/(?:news\.google\.com|www\.bloomberght\.com)\//.test(article.link)) byLink.set(article.link, article);
+    }
+  }
+  return {
+    articles: [...byLink.values()].sort((a, b) => b.publishedAt - a.publishedAt).slice(0, 6),
+    error: results.every((result) => result.status === 'rejected'),
+    fetchedAt: now,
+  };
 }
