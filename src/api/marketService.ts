@@ -34,6 +34,7 @@ import type {
 } from '@/types/market';
 import { calculateGoldPrices, GOLD_SYMBOL_TO_TYPE, isDerivedGoldSymbol } from '@/utils/goldCalculator';
 import { deriveGoldHistory, parseHistory, type RawHistory } from '@/utils/history';
+import { deriveGoldDayTrend } from '@/utils/goldTrend';
 
 /* ------------------------------------------------------------------ */
 /* HTTP yardımcıları                                                   */
@@ -107,6 +108,8 @@ function buildQuote(
     bid: data.bid ?? null,
     ask: data.ask ?? null,
     sparkline: data.sparkline ?? [],
+    ...(data.intradayPoints ? { intradayPoints: data.intradayPoints } : {}),
+    ...(data.goldTrend ? { goldTrend: data.goldTrend } : {}),
     source: data.source,
     marketTime: data.marketTime ?? Date.now(),
     isStale: false,
@@ -145,12 +148,14 @@ export async function fetchYahooQuote(symbol: YahooSymbol): Promise<MarketQuote>
     dayHigh: meta.regularMarketDayHigh ?? null,
     dayLow: meta.regularMarketDayLow ?? null,
     sparkline,
+    intradayPoints: symbol === 'GC=F' || symbol === 'USDTRY=X' ? parseHistory(result) : undefined,
     marketTime: isNum(meta.regularMarketTime) ? meta.regularMarketTime * 1000 : Date.now(),
     source: 'yahoo',
   });
 }
 
 interface CloudflareBatchItem {
+  timestamp?: number[];
   meta?: {
     regularMarketPrice?: number;
     previousClose?: number;
@@ -209,6 +214,7 @@ export async function fetchYahooQuotes(
             dayHigh: item.meta.regularMarketDayHigh ?? null,
             dayLow: item.meta.regularMarketDayLow ?? null,
             sparkline,
+            intradayPoints: sym === 'GC=F' || sym === 'USDTRY=X' ? parseHistory(item) : undefined,
             marketTime: isNum(item.meta.regularMarketTime) ? item.meta.regularMarketTime * 1000 : Date.now(),
             source: 'yahoo',
           });
@@ -388,6 +394,27 @@ export async function fetchMarketSnapshot(
       if (calculatedGold[goldSym]) {
         quotes[goldSym] = calculatedGold[goldSym];
       }
+    }
+  }
+
+  // Both base series already arrive in the normal batch. Reuse their timestamps for
+  // every gold type; only recover missing histories, never request one per gold card.
+  if (GOLD_SYMBOLS.some((symbol) => quotes[symbol])) {
+    const bases = ['GC=F', 'USDTRY=X'] as const;
+    const histories = await Promise.allSettled(bases.map((symbol) => {
+      const points = quotes[symbol]?.intradayPoints;
+      return points && points.length >= 2 ? Promise.resolve(points) : fetchHistoricalChart(symbol, '1d');
+    }));
+    if (histories[0].status === 'fulfilled' && histories[1].status === 'fulfilled') {
+      for (const symbol of GOLD_SYMBOLS) {
+        const quote = quotes[symbol];
+        if (!quote) continue;
+        const goldTrend = deriveGoldDayTrend(histories[0].value, histories[1].value, symbol);
+        if (goldTrend) quotes[symbol] = { ...quote, goldTrend, sparkline: goldTrend.points.map((point) => point.value) };
+      }
+    }
+    if (GOLD_SYMBOLS.some((symbol) => quotes[symbol] && !quotes[symbol]?.goldTrend)) {
+      warnings.push('Altın günlük grafik verisi alınamadı; mevcut alış/satış fiyatları korunuyor.');
     }
   }
 

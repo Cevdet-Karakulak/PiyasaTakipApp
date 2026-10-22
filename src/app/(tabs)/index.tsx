@@ -397,7 +397,7 @@ export default function MarketsScreen() {
 
       {/* Varlık Detay Modalı */}
       <AssetDetailModal
-        quote={selectedQuote}
+        quote={selectedQuote ? quotes[selectedQuote.symbol] ?? selectedQuote : null}
         visible={modalVisible}
         onClose={() => {
           setModalVisible(false);
@@ -574,3 +574,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
