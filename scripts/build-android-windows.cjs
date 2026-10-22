@@ -41,6 +41,19 @@ function run(command, args, options) {
   }
 }
 
+function gradleBuildCommand() {
+  // Limit system-wide pressure, not just the Gradle heap. Native allocations
+  // can fail while Java's heap is still below its limit on a 16 GB machine.
+  return [
+    'gradlew.bat :app:assembleRelease :app:bundleRelease',
+    '--init-script ../scripts/android-local-signing.gradle',
+    '--no-configuration-cache --no-daemon --no-parallel --max-workers=1',
+    '"-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:ActiveProcessorCount=2 -Dfile.encoding=UTF-8"',
+    '-Pkotlin.compiler.execution.strategy=in-process',
+    '-PreactNativeArchitectures=armeabi-v7a,arm64-v8a',
+  ].join(' ');
+}
+
 function main() {
   const { values } = parseArgs({ options: { 'version-code': { type: 'string' } } });
   const code = versionCode(values['version-code']);
@@ -56,13 +69,14 @@ function main() {
   }
   const env = { ...process.env, ANDROID_HOME: sdk, ANDROID_SDK_ROOT: sdk,
     NODE_ENV: 'production', PIYASA_ANDROID_CREDENTIALS: credentials,
-    PIYASA_ANDROID_ROOT: root, PIYASA_ANDROID_VERSION_CODE: String(code) };
+    PIYASA_ANDROID_ROOT: root, PIYASA_ANDROID_VERSION_CODE: String(code),
+    PIYASA_ANDROID_LOW_MEMORY: '1' };
   run('java', ['-version'], { cwd: root, env });
   console.log(`Android release hazirlaniyor. versionCode=${code}`);
+  console.log('Bellek siniri: Gradle 1 isci, C++ 1 is, Metro 2 isci, Gradle heap 2 GB.');
   run(process.execPath, [require.resolve('expo/bin/cli'), 'prebuild', '--platform', 'android',
     '--no-install'], { cwd: root, env });
-  run('cmd.exe', ['/d', '/s', '/c',
-    'gradlew.bat :app:assembleRelease :app:bundleRelease --init-script ../scripts/android-local-signing.gradle --no-configuration-cache -PreactNativeArchitectures=armeabi-v7a,arm64-v8a'],
+  run('cmd.exe', ['/d', '/s', '/c', gradleBuildCommand()],
   { cwd: path.join(root, 'android'), env, windowsVerbatimArguments: true });
 
   const outputs = [
@@ -87,4 +101,4 @@ if (require.main === module) {
   try { main(); }
   catch (error) { console.error(error.message); process.exitCode = 1; }
 }
-module.exports = { versionCode, readCredentials };
+module.exports = { versionCode, readCredentials, gradleBuildCommand };

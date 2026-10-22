@@ -4,10 +4,29 @@ import groovy.json.JsonSlurper
 // stay in the ignored credentials.json; no secret is copied to source or args.
 gradle.beforeProject { project ->
     def expectedRoot = System.getenv('PIYASA_ANDROID_ROOT')
-    if (!expectedRoot || project.path != ':app' ||
+    if (!expectedRoot ||
         project.rootDir.canonicalFile != new File(expectedRoot, 'android').canonicalFile) {
         return
     }
+    if (System.getenv('PIYASA_ANDROID_LOW_MEMORY') == '1') {
+        // Gradle workers do not bound Ninja's own compiler pool. Apply this to
+        // native library modules as well as :app, without editing generated files.
+        ['com.android.application', 'com.android.library'].each { pluginId ->
+            project.plugins.withId(pluginId) {
+                project.extensions.getByName('androidComponents').finalizeDsl { android ->
+                    android.defaultConfig.externalNativeBuild.cmake.arguments.addAll([
+                        '-DCMAKE_JOB_POOLS=piyasa_native=1',
+                        '-DCMAKE_JOB_POOL_COMPILE=piyasa_native',
+                        '-DCMAKE_JOB_POOL_LINK=piyasa_native'
+                    ])
+                }
+            }
+        }
+        project.plugins.withId('com.facebook.react') {
+            project.extensions.getByName('react').extraPackagerArgs.addAll(['--max-workers', '2'])
+        }
+    }
+    if (project.path != ':app') return
     project.plugins.withId('com.android.application') {
         project.extensions.getByName('androidComponents').finalizeDsl { android ->
             def credentialsPath = System.getenv('PIYASA_ANDROID_CREDENTIALS')

@@ -3,7 +3,20 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { versionCode, readCredentials } = require('../scripts/build-android-windows.cjs');
+const { versionCode, readCredentials, gradleBuildCommand } = require('../scripts/build-android-windows.cjs');
+
+test('Windows release bounds worker pressure while retaining signing, both artifacts, and both ARM ABIs', () => {
+  const command = gradleBuildCommand();
+  assert.match(command, /--max-workers=1(?:\s|$)/);
+  assert.match(command, /--no-parallel(?:\s|$)/);
+  assert.match(command, /--no-daemon(?:\s|$)/);
+  assert.match(command, /"-Dorg\.gradle\.jvmargs=[^"]*-Xmx2048m[^\"]*ActiveProcessorCount=2[^\"]*"/);
+  assert.match(command, /-Pkotlin\.compiler\.execution\.strategy=in-process/);
+  assert.match(command, /:app:assembleRelease/); assert.match(command, /:app:bundleRelease/);
+  assert.match(command, /--init-script \.\.\/scripts\/android-local-signing\.gradle/);
+  assert.match(command, /-PreactNativeArchitectures=armeabi-v7a,arm64-v8a/);
+  assert.doesNotMatch(command, /(?:^|\s)clean(?:\s|$)/, 'retain completed native work after a crash');
+});
 
 test('local Android release requires an explicit Play-compatible version code', () => {
   for (const value of [undefined, '', '0', '-1', '1.5', 'NaN', '2100000001']) {
