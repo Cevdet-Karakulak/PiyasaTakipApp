@@ -49,6 +49,14 @@
           "delayAppMeasurementInit": true,
           "userTrackingUsageDescription": "Bu tanımlayıcı, size daha uygun ve ilgi alanlarınıza yönelik reklamlar sunmak için kullanılacaktır."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
       ]
     ],
     "experiments": {
