@@ -1,12 +1,11 @@
 import React, { useEffect } from 'react';
-import { LogBox, Platform, useColorScheme } from 'react-native';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { LogBox, Platform, Pressable, Share, Text, View, useColorScheme } from 'react-native';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 
 import { getThemeColors, resolveThemeMode } from '@/constants/fintechTheme';
 import { usePreferencesStore } from '@/store/preferencesStore';
-import { initAdMob } from '@/utils/admob';
 
 // Tarayıcı eklentilerinden (örn. Urban VPN chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon)
 // kaynaklanan harici hataların Expo Web konsolunu kirletmesini engelle
@@ -45,6 +44,17 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 // Splash screen'in ilk yükleme bitene kadar ekranda kalmasını sağla
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+/** Route/render failures can be retried and reported; native process crashes need an .ips log. */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => { void SplashScreen.hideAsync().catch(() => {}); }, []);
+  return <View style={{ flex: 1, backgroundColor: '#0b1423', justifyContent: 'center', padding: 28, gap: 16 }}>
+    <Text style={{ color: '#f4f6fa', fontSize: 23, fontWeight: '700' }}>Bir sorun oluştu</Text>
+    <Text style={{ color: '#a5b2c7', fontSize: 14, lineHeight: 22 }}>Uygulama bu ekranı açamadı. Tekrar deneyebilir veya hata raporunu paylaşabilirsin.</Text>
+    <Pressable accessibilityRole="button" onPress={() => { void retry(); }} style={{ minHeight: 48, backgroundColor: '#2962FF', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '700' }}>Tekrar dene</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => { void Share.share({ message: `PiyasaRadarı · ${Platform.OS} ${Platform.Version}\n${error.name}: ${error.message.slice(0, 1000)}` }).catch(() => {}); }} style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#a5b2c7' }}>Hata raporunu paylaş</Text></Pressable>
+  </View>;
+}
+
 export default function RootLayout() {
   const theme = usePreferencesStore((s) => s.theme);
   const systemScheme = useColorScheme();
@@ -52,7 +62,6 @@ export default function RootLayout() {
   const colors = getThemeColors(theme, systemScheme);
 
   useEffect(() => {
-    initAdMob().catch(() => {});
     const timer = setTimeout(() => {
       SplashScreen.hideAsync().catch(() => {});
     }, 300);
@@ -74,3 +83,4 @@ export default function RootLayout() {
     </ThemeProvider>
   );
 }
+

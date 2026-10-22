@@ -10,3 +10,10 @@ export function calculateFuelScenario(price: number | null | undefined, litersTe
   const newTotal = currentTotal !== null && deltaTotal !== null && currentTotal + deltaTotal >= 0 ? currentTotal + deltaTotal : null;
   return { currentTotal, deltaTotal, newTotal };
 }
+
+/** Magnitude comes from the decimal keyboard; direction is chosen separately. */
+export function fuelDeltaText(amount: string, direction: 'discount' | 'increase'): string {
+  const value = amount.trim();
+  if (!/^\d+(?:[.,]\d+)?$/.test(value)) return '';
+  return direction === 'discount' ? `-${value}` : value;
+}
