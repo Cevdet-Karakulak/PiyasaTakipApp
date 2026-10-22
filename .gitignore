@@ -17,6 +17,9 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+/credentials.json
+/credentials/
+*.keystore
 
 # Metro
 .metro-health-check*
@@ -46,4 +49,5 @@ example
 *.ipa
 *.apk
 *.aab
+/artifacts/
 .gemini/
