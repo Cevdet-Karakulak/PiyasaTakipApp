@@ -84,6 +84,11 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
   const isDown = trend === 'down';
   const assetDef = ASSETS[quote.symbol];
   const decimals = assetDef?.decimals ?? 2;
+  const goldTrend = isDerivedGoldSymbol(quote.symbol) ? quote.goldTrend : undefined;
+  const hasDirectRange = quote.dayHigh != null && quote.dayLow != null;
+  const theoreticalRange = !hasDirectRange && goldTrend;
+  const dayHigh = hasDirectRange ? quote.dayHigh : goldTrend?.high ?? quote.dayHigh;
+  const dayLow = hasDirectRange ? quote.dayLow : goldTrend?.low ?? quote.dayLow;
 
   const screenWidth = Dimensions.get('window').width;
   const chartWidth = measuredWidth || Math.min(screenWidth - 64, 568);
@@ -124,7 +129,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
                 />
               </Pressable>
 
-              <Pressable onPress={onClose} hitSlop={8} style={styles.iconBtn}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Detayı kapat" onPress={onClose} hitSlop={8} style={styles.iconBtn}>
                 <X size={22} color={FintechTheme.colors.textMuted} />
               </Pressable>
             </View>
@@ -201,6 +206,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
                 return (
                   <Pressable
                     key={r.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={r.label}
+                    accessibilityState={{ selected: isActive }}
                     style={[styles.rangeTab, isActive && styles.rangeTabActive]}
                     onPress={() => setRange(r.key)}
                   >
@@ -245,18 +253,21 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ quote, visib
             {/* Gün İçi En Yüksek / En Düşük & İstatistik Kutuları */}
             <View style={styles.statsSection}>
               <Text style={styles.sectionTitle}>Piyasa İstatistikleri</Text>
+              {theoreticalRange && <Text testID="gold-day-range-note" style={[styles.statLabel, { marginBottom: 12, lineHeight: 17 }]}>
+                {goldTrend.sessionDate.split('-').reverse().join('.')} · Günlük grafik örneklerinin teorik aralığıdır; kuyumcu alış/satış aralığı değildir.
+              </Text>}
               <View style={styles.statsGrid}>
                 <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>Gün İçi En Yüksek</Text>
-                  <Text style={[styles.statValue, { color: FintechTheme.colors.up }]}>
-                    {quote.dayHigh ? formatPrice(quote.dayHigh, quote.currency, decimals) : '—'}
+                  <Text style={styles.statLabel}>{theoreticalRange ? 'Günlük Grafik En Yüksek' : 'Gün İçi En Yüksek'}</Text>
+                  <Text testID="day-high" style={[styles.statValue, { color: FintechTheme.colors.up }]}>
+                    {dayHigh != null ? formatPrice(dayHigh, quote.currency, decimals) : '—'}
                   </Text>
                 </View>
 
                 <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>Gün İçi En Düşük</Text>
-                  <Text style={[styles.statValue, { color: FintechTheme.colors.down }]}>
-                    {quote.dayLow ? formatPrice(quote.dayLow, quote.currency, decimals) : '—'}
+                  <Text style={styles.statLabel}>{theoreticalRange ? 'Günlük Grafik En Düşük' : 'Gün İçi En Düşük'}</Text>
+                  <Text testID="day-low" style={[styles.statValue, { color: FintechTheme.colors.down }]}>
+                    {dayLow != null ? formatPrice(dayLow, quote.currency, decimals) : '—'}
                   </Text>
                 </View>
 

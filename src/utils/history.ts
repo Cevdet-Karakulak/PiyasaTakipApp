@@ -20,14 +20,14 @@ export function parseHistory(result: RawHistory): ChartPoint[] {
 }
 
 /** Theoretical TRY value using the most recent preceding FX observation. */
-export function deriveGoldHistory(ons: ChartPoint[], fx: ChartPoint[], symbol: GoldSymbol): ChartPoint[] {
+export function deriveGoldHistory(ons: ChartPoint[], fx: ChartPoint[], symbol: GoldSymbol, maxFxAgeMs = 4 * 86_400_000): ChartPoint[] {
   const points: ChartPoint[] = [];
   let cursor = -1;
   for (const point of ons) {
     while (cursor + 1 < fx.length && fx[cursor + 1].timestamp <= point.timestamp) cursor++;
     const rate = fx[cursor];
     // Allow weekends/holidays, but never use a future rate or carry one indefinitely.
-    if (!rate || point.timestamp - rate.timestamp > 4 * 86_400_000) continue;
+    if (!rate || point.timestamp - rate.timestamp > maxFxAgeMs) continue;
     const values = calculateGoldPrices(point.value, rate.value);
     if (values) points.push({ timestamp: point.timestamp, value: values[GOLD_SYMBOL_TO_TYPE[symbol]] });
   }

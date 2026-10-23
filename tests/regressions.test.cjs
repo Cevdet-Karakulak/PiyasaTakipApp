@@ -90,7 +90,7 @@ test('offline without real cache returns unknown, not hardcoded pump prices', as
 });
 test('offline preserves actual saved time and marks old prices stale', async () => {
   const time = Date.now() - 7200000;
-  storage.set('finanspulse:fuel-cache:v2:34_avrupa', JSON.stringify({ benzin: 50, motorin: 52, lpg: null, updatedAt: time, provinceName: FUEL_PROVINCES[0].name }));
+  storage.set('finanspulse:fuel-cache:v3:34_avrupa', JSON.stringify({ benzin: 50, motorin: 52, lpg: null, updatedAt: time, provinceName: FUEL_PROVINCES[0].name, provider: 'Petrol Ofisi' }));
   global.fetch = async () => response({}, 503);
   const prices = await fetchProvinceFuelPrices(FUEL_PROVINCES[0], true);
   assert.equal(prices.updatedAt, time); assert.equal(prices.source, 'cache'); assert.equal(prices.isStale, true);

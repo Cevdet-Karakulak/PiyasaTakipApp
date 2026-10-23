@@ -69,6 +69,10 @@ export interface MarketQuote {
   ask: number | null;
   /** Gün içi kapanış serisi (mini grafik için). */
   sparkline: number[];
+  /** Timestamped observations retained for the gold/FX conversion, not index-paired closes. */
+  intradayPoints?: ChartPoint[];
+  /** Separate from the retail quote: sampled theoretical gold values for one Istanbul date. */
+  goldTrend?: GoldDayTrend;
   source: DataSource;
   /** Kaynağın bildirdiği piyasa zamanı (ms). */
   marketTime: number;
@@ -91,6 +95,13 @@ export type HistoricalRange = '1d' | '1w' | '1mo' | '1y';
 export interface ChartPoint {
   timestamp: number;
   value: number;
+}
+
+export interface GoldDayTrend {
+  points: ChartPoint[];
+  sessionDate: string;
+  high: number;
+  low: number;
 }
 
 

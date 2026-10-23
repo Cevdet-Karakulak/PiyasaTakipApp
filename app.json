@@ -49,6 +49,14 @@
           "delayAppMeasurementInit": true,
           "userTrackingUsageDescription": "Bu tanımlayıcı, size daha uygun ve ilgi alanlarınıza yönelik reklamlar sunmak için kullanılacaktır."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
       ]
     ],
     "experiments": {
@@ -59,7 +67,8 @@
       "router": {},
       "eas": {
         "projectId": "a60e5255-e158-4bf8-b700-77f76787d980"
-      }
+      },
+      "iosAdsEnabled": false
     },
     "owner": "floppachesscorps-team"
   },

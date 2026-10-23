@@ -118,7 +118,7 @@ function parseRssXml(xml: string, defaultSource: string): NewsArticle[] {
       title,
       summary: description || title,
       link,
-      source: defaultSource,
+      source: extractTag(chunk, 'source') || defaultSource,
       pubDate: pubDateStr,
       publishedAt,
       timeAgo: formatTimeAgo(publishedAt),

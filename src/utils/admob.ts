@@ -13,13 +13,16 @@ const MIN_INTERSTITIAL_COOLDOWN_MS = 90 * 1000; // 90 saniye
 const INTERACTIONS_BEFORE_AD = 3;
 
 let isInitialized = false;
+let initialization: Promise<void> | null = null;
+let isAdShowing = false;
 let isAdLoaded = false;
 let isAdLoading = false;
-let lastAdShownAt = 0;
+let lastAdShownAt = Date.now();
 let interactionCount = 0;
 let interstitialInstance: {
   load: () => void;
   show: () => Promise<void>;
+  destroy: () => void;
 } | null = null;
 
 function isNativeAdsSupported(): boolean {
@@ -30,6 +33,9 @@ function isNativeAdsSupported(): boolean {
   if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
     return false;
   }
+  // Temporary diagnostic gate: keep iOS usable while the native crash log is collected.
+  // This is a build-time setting, not a claim that AdMob caused the reported crash.
+  if (Platform.OS === 'ios' && Constants.expoConfig?.extra?.iosAdsEnabled !== true) return false;
   return true;
 }
 
@@ -38,22 +44,26 @@ export async function initAdMob(): Promise<void> {
     return;
   }
 
-  try {
+  if (initialization) return initialization;
+  initialization = Promise.resolve().then(async () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mobileAdsModule = require('react-native-google-mobile-ads');
+    const consent = await mobileAdsModule.AdsConsent.gatherConsent();
+    if (!consent.canRequestAds) return;
     const mobileAds = mobileAdsModule.default;
     if (typeof mobileAds === 'function') {
       await mobileAds().initialize();
       isInitialized = true;
       preloadInterstitialAd();
     }
-  } catch {
-    // Web veya Expo Go ortamında sessizce geç
-  }
+  }).catch(() => {
+    // Consent/network failures leave the application usable without requesting ads.
+  }).finally(() => { initialization = null; });
+  return initialization;
 }
 
 export function preloadInterstitialAd(): void {
-  if (!isNativeAdsSupported() || isAdLoading || isAdLoaded) {
+  if (!isInitialized || !isNativeAdsSupported() || isAdLoading || isAdLoaded || isAdShowing) {
     return;
   }
 
@@ -79,9 +89,11 @@ export function preloadInterstitialAd(): void {
     });
 
     interstitial.addAdEventListener(AdEventType.CLOSED, () => {
+      isAdShowing = false;
       isAdLoaded = false;
       isAdLoading = false;
       interstitialInstance = null;
+      try { interstitial.destroy(); } catch { /* Already destroyed. */ }
       // Kapatıldıktan sonra bir sonraki geçiş için arka planda yeni reklam hazırla
       setTimeout(() => {
         preloadInterstitialAd();
@@ -89,9 +101,11 @@ export function preloadInterstitialAd(): void {
     });
 
     interstitial.addAdEventListener(AdEventType.ERROR, () => {
+      isAdShowing = false;
       isAdLoaded = false;
       isAdLoading = false;
       interstitialInstance = null;
+      try { interstitial.destroy(); } catch { /* Already destroyed. */ }
     });
 
     interstitialInstance = interstitial;
@@ -112,6 +126,9 @@ export function recordAdInteraction(): void {
 
   interactionCount += 1;
 
+  if (!isInitialized) { void initAdMob(); return; }
+  if (isAdShowing) return;
+
   if (!isAdLoaded && !isAdLoading) {
     preloadInterstitialAd();
     return;
@@ -126,9 +143,17 @@ export function recordAdInteraction(): void {
   ) {
     interactionCount = 0;
     lastAdShownAt = now;
-    interstitialInstance.show().catch(() => {
+    isAdLoaded = false;
+    isAdShowing = true;
+    const ad = interstitialInstance;
+    const failed = () => {
       isAdLoaded = false;
+      isAdShowing = false;
       interstitialInstance = null;
-    });
+      try { ad.destroy(); } catch { /* Already destroyed. */ }
+    };
+    // v17 show() can both throw synchronously and reject its returned promise.
+    try { Promise.resolve(ad.show()).catch(failed); } catch { failed(); }
   }
 }
+
