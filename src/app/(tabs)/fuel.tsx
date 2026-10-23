@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowUpRight, Clock3, Droplet, Flame, Fuel, MapPin, Newspaper, RefreshCw, Zap } from 'lucide-react-native';
+import { ArrowUpRight, Clock3, Droplet, Flame, Fuel, MapPin, RefreshCw, Zap } from 'lucide-react-native';
 
 import { fetchProvinceFuelPrices, FUEL_PROVINCES, type FuelPrices } from '@/api/fuelService';
 import { PETROL_OFISI_FUEL_URL } from '@/api/fuelSources';
-import { fetchFuelNews, formatTimeAgo } from '@/api/newsService';
+import { fetchFuelChanges } from '@/api/fuelChanges';
+import { FuelChangeSummary } from '@/components/FuelChangeSummary';
 import { FuelCalculator } from '@/components/FuelCalculator';
 import { FintechTheme, useThemeColors } from '@/constants/fintechTheme';
 import { formatNumber } from '@/utils/format';
@@ -23,7 +24,7 @@ export default function FuelScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
-  const [news, setNews] = useState<Awaited<ReturnType<typeof fetchFuelNews>> | null>(null);
+  const [changes, setChanges] = useState<Awaited<ReturnType<typeof fetchFuelChanges>> | null>(null);
   const [now, setNow] = useState(Date.now);
   const forcePriceRefresh = useRef(false);
   const prices = fuelPrices?.provinceName === province.name && fuelPrices.updatedAt !== null && now - fuelPrices.updatedAt < 86_400_000 ? fuelPrices : null;
@@ -42,8 +43,8 @@ export default function FuelScreen() {
 
   useEffect(() => {
     let active = true;
-    void fetchFuelNews().then((data) => { if (active) setNews(data); })
-      .catch(() => { if (active) setNews({ articles: [], error: true, fetchedAt: Date.now() }); });
+    void fetchFuelChanges(refreshToken > 0).then((data) => { if (active) setChanges(data); })
+      .catch(() => { if (active) setChanges({ events: [], generatedAt: null, checkedAt: Date.now(), stale: true, error: true }); });
     return () => { active = false; };
   }, [refreshToken]);
 
@@ -92,19 +93,9 @@ export default function FuelScreen() {
         </View>
         {!loading && !hasPrices && <Pressable accessibilityRole="button" onPress={refresh} style={[styles.retry, { backgroundColor: colors.accentSoft }]}><Text style={[styles.linkText, { color: colors.accent }]}>Fiyatları tekrar dene</Text></Pressable>}
         {prices?.isStale && <Text style={[styles.note, { color: colors.textMuted }]}>Bağlantı kurulamadı. {new Date(prices.updatedAt!).toLocaleDateString('tr-TR')} tarihindeki son kayıt gösteriliyor.</Text>}
+        <FuelChangeSummary report={changes} />
         <FuelCalculator prices={hasPrices ? prices : null} />
-        <View style={styles.newsHeader}><View style={styles.sectionHeading}><Newspaper size={18} color={colors.accent} /><Text style={[styles.sectionTitle, { color: colors.text }]}>Fiyat değişikliği gündemi</Text></View></View>
-        <Text style={[styles.newsIntro, { color: colors.textMuted }]}>Zam ve indirim haberlerini kaynağından takip et.</Text>
-        {!news ? <ActivityIndicator style={styles.newsSpinner} color={colors.accent} /> : news.error || !news.articles.length ? <View style={[styles.emptyNews, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.newsTitle, { color: colors.text }]}>{news.error ? 'Haberler yüklenemedi' : 'Yeni haber bulunamadı'}</Text>
-          <Text style={[styles.note, { color: colors.textMuted }]}>Güncel başlıkları görmek için tekrar yenileyebilirsin.</Text>
-        </View> : news.articles.slice(0, 4).map((article) => <Pressable key={article.id} accessibilityRole="link" onPress={() => open(article.link)} style={[styles.article, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.articleMeta}><Text style={[styles.publisher, { color: colors.accent }]}>{article.source}</Text><Text style={[styles.articleTime, { color: colors.textMuted }]}>{formatTimeAgo(article.publishedAt)}</Text></View>
-          <Text numberOfLines={3} style={[styles.newsTitle, { color: colors.text }]}>{article.title}</Text>
-          <View style={styles.readArticle}><Text style={[styles.linkText, { color: colors.textMuted }]}>Haberi oku</Text><ArrowUpRight size={15} color={colors.textMuted} /></View>
-        </Pressable>)}
-        <Pressable accessibilityRole="link" style={styles.allNews} onPress={() => open('https://news.google.com/search?q=akaryak%C4%B1t%20zam%20indirim&hl=tr&gl=TR&ceid=TR%3Atr')}><Text style={[styles.linkText, { color: colors.accent }]}>Tüm akaryakıt haberleri</Text><ArrowUpRight size={16} color={colors.accent} /></Pressable>
-        <Text style={[styles.footer, { color: colors.textMuted }]}>Liste fiyatları istasyonda farklılık gösterebilir. Haberlerdeki beklentiler kesinleşmiş fiyat değişikliği değildir.</Text>
+        <Text style={[styles.footer, { color: colors.textMuted }]}>Dağıtıcı liste fiyatları istasyonda farklılık gösterebilir. Değişiklik takibi Petrolistan verisidir.</Text>
       </ScrollView>
     </SafeAreaView>
   );

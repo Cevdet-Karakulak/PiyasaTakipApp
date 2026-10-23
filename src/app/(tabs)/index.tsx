@@ -12,16 +12,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import {
   Clock,
   RefreshCw,
   Search,
-  Settings,
   ShieldCheck,
   Star,
-  User,
-  UserCheck,
   X,
   Zap,
 } from 'lucide-react-native';
@@ -33,7 +29,6 @@ import { AssetDetailModal } from '@/components/AssetDetailModal';
 import { MarketTicker } from '@/components/MarketTicker';
 import { FintechTheme, useThemeColors } from '@/constants/fintechTheme';
 import { useMarketData } from '@/hooks/useMarketData';
-import { useAuthStore } from '@/store/authStore';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import { useTranslation } from '@/store/preferencesStore';
 import type { MarketQuote, MarketSymbol } from '@/types/market';
@@ -53,7 +48,6 @@ const CATEGORIES: { id: FilterCategory; label: string }[] = [
 export default function MarketsScreen() {
   const { quotes, isLoading, isRefreshing, lastUpdated, refresh, addCustomQuote } = useMarketData();
   const { favorites } = useFavoritesStore();
-  const user = useAuthStore((s) => s.user);
   const { t } = useTranslation();
   const colors = useThemeColors();
 
@@ -190,22 +184,9 @@ export default function MarketsScreen() {
               <Text style={[styles.liveTagText, { color: colors.accent }]}>{t('CANLI')}</Text>
             </View>
           </View>
-
-          {/* Güncelleme & Smart Cache Bilgisi */}
-          <View style={styles.cacheInfoRow}>
-            <ShieldCheck size={12} color={colors.up} />
-            <Text style={[styles.cacheInfoText, { color: colors.up }]}>60s Smart Cache</Text>
-            <Text style={[styles.dotSeparator, { color: colors.textMuted }]}>•</Text>
-            <Clock size={11} color={colors.textMuted} />
-            <Text style={[styles.updateTimeText, { color: colors.textMuted }]}>
-              {lastUpdated
-                ? t(`Uygulama Güncelleme: ${formatTime(lastUpdated)}`)
-                : t('Yükleniyor...')}
-            </Text>
-          </View>
         </View>
 
-        {/* Sağ Üst Aksiyonlar: Yenile, Kullanıcı Girişi ve Ayarlar */}
+        {/* Yenileme; hesap ve ayarlar tüm sekmelerden alt menüyle açılır. */}
         <View style={styles.headerRight}>
           <Pressable
             onPress={handleRefresh}
@@ -215,7 +196,7 @@ export default function MarketsScreen() {
               { backgroundColor: colors.surface, borderColor: colors.border },
               pressed && { backgroundColor: colors.surfaceHighlight, opacity: 0.8 },
             ]}
-            accessibilityLabel="Yenile"
+            accessibilityLabel="Piyasa verilerini yenile"
             accessibilityRole="button"
           >
             {isRefreshing ? (
@@ -224,40 +205,20 @@ export default function MarketsScreen() {
               <RefreshCw size={17} color={colors.text} />
             )}
           </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/(tabs)/settings')}
-            style={({ pressed }) => [
-              styles.headerIconButton,
-              {
-                backgroundColor: user ? colors.upSoft : colors.surface,
-                borderColor: user ? colors.up : colors.border,
-              },
-              pressed && { opacity: 0.8 },
-            ]}
-            accessibilityLabel={t('Hesap')}
-            accessibilityRole="button"
-          >
-            {user ? (
-              <UserCheck size={17} color={colors.up} />
-            ) : (
-              <User size={17} color={colors.text} />
-            )}
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/(tabs)/settings')}
-            style={({ pressed }) => [
-              styles.headerIconButton,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              pressed && { backgroundColor: colors.surfaceHighlight, opacity: 0.8 },
-            ]}
-            accessibilityLabel={t('Ayarlar')}
-            accessibilityRole="button"
-          >
-            <Settings size={18} color={colors.text} />
-          </Pressable>
         </View>
+      </View>
+
+      {/* Güncelleme bilgisi, aksiyonlardan ayrı satırda. */}
+      <View style={styles.cacheInfoRow}>
+        <ShieldCheck size={12} color={colors.up} />
+        <Text style={[styles.cacheInfoText, { color: colors.up }]}>60s Smart Cache</Text>
+        <Text style={[styles.dotSeparator, { color: colors.textMuted }]}>•</Text>
+        <Clock size={11} color={colors.textMuted} />
+        <Text style={[styles.updateTimeText, { color: colors.textMuted }]}>
+          {lastUpdated
+            ? t(`Güncelleme: ${formatTime(lastUpdated)}`)
+            : t('Yükleniyor...')}
+        </Text>
       </View>
 
       {/* Smart Cache Bildirim Banner'ı */}
@@ -422,6 +383,7 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+    minWidth: 0,
   },
   headerRight: {
     flexDirection: 'row',
@@ -429,8 +391,8 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   headerIconButton: {
-    width: 37,
-    height: 37,
+    width: 44,
+    height: 44,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
@@ -438,6 +400,7 @@ const styles = StyleSheet.create({
   },
   logoRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
   },
@@ -467,6 +430,9 @@ const styles = StyleSheet.create({
   },
   cacheInfoRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
     alignItems: 'center',
     gap: 4,
     marginTop: 3,

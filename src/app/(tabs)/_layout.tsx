@@ -7,6 +7,7 @@ import {
   Newspaper,
   PieChart,
   TrendingUp,
+  UserRound,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -48,7 +49,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
           marginTop: 2,
         },
@@ -102,9 +103,12 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          href: null, // Alt menüde yer kaplamaz, üst barlardaki ayarlar ikonundan açılır
+          title: t('Hesap'),
+          tabBarAccessibilityLabel: t('Hesap ve ayarlar'),
+          tabBarIcon: ({ color, size }) => (<UserRound size={size ?? 22} color={color} strokeWidth={2.2} />),
         }}
       />
     </Tabs>
   );
 }
+

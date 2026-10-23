@@ -22,6 +22,7 @@ Module._load = function (request, parent, isMain) {
   if (request === 'lucide-react-native') return new Proxy({}, { get: (_, name) => name });
   if (request === '@/api/fuelService') return { FUEL_PROVINCES: provinces,
     fetchProvinceFuelPrices: province => new Promise(resolve => { requests.push({ province, resolve }); }) };
+  if (request === '@/api/fuelChanges') return { fetchFuelChanges: async () => ({ events: [], generatedAt: Date.now(), checkedAt: Date.now(), stale: false, error: false }), FUEL_CHANGES_SOURCE: 'https://petrolistan.com/akaryakit/zam-indirim' };
   if (request === '@/api/newsService') return { fetchFuelNews: async () => ({ articles: [], error: false, fetchedAt: Date.now() }), formatTimeAgo: () => 'Az önce' };
   return originalLoad.call(this, request, parent, isMain);
 };
