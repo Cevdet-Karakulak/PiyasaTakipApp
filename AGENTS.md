@@ -77,3 +77,28 @@ Kullanıcı mağaza yayınına geçtiğinde ekran görüntüsü beklemeden aşa�
     - Özellik grafiği: `1024x500` PNG (Türkçe karakterler Unicode güvenli üretilmeli)
     - Telefon/Tablet ekran görüntüleri: 4 adet `1080x1920` (9:16) PNG
 
+## GitHub README.md Standart Şablonu (UKD Hesapla, Turvona, PiyasaRadarı Standardı)
+
+Kullanıcı herhangi bir repo için "bizim standartta README hazırla" dediğinde başka klasörleri aramaya gerek kalmadan doğrudan aşağıdaki yapı kullanılır:
+
+1. **Ana Başlık & Alt Başlık:**
+   - `# <Emoji> <Uygulama Adı> – <Kapsamlı Türkçe Tanım>`
+   - `### **<Temel Özellikler Özeti> (<Teknoloji Yığını: React Native + Expo SDK + TypeScript + ...>)**`
+2. **`## 🚀 Proje Hakkında`:**
+   - 2 paragraf: İlk paragrafta uygulamanın ne olduğu, kimler için geliştirildiği ve cross-platform yapısı; ikinci paragrafta çözdüğü temel teknik/kullanıcı problemi ve mimari farkı.
+3. **`## 📌 İçindekiler`:** Tüm ana bölümlere çapa (anchor) bağlantıları.
+4. **`## ✨ Temel Özellikler`:** Emoji ikonlu, kalın başlıklı ve alt maddeli detaylı özellik listesi.
+5. **`## 🧠 Öne Çıkan Modüller ve Mimari` / Teknik Derinlik Bölümleri:**
+   - Uygulamanın öne çıkan modülleri (`App.tsx`, özel algoritmalar, güvenlik/arşiv/proxy katmanları) ve ASCII akış şeması.
+6. **`## ⚙️ Kullanılan Teknolojiler`:**
+   - `<p align="center">` içinde `https://img.shields.io/badge/...?style=for-the-badge` rozetleri.
+7. **`## 📸 Ekran Görüntüleri`:** (Varsa 3'lü iki satır Markdown tablosu halinde `width="300"` görseller).
+8. **`## 📁 Proje Dizin Yapısı`:**
+   - `bash` kod bloğu içinde açıklamalı (`# ...`) klasör ve dosya ağacı.
+9. **`## 📥 Kurulum ve Çalıştırma`:**
+   - Gereksinimler, `git clone`, bağımlılık kurulumu, mobil/web/sunucu başlatma komutları.
+10. **`## 🧪 Test ve Doğrulama`:** `npm run typecheck`, `npm test`, `npm run release:check` vb. komutlar.
+11. **`## 🔒 Gizlilik ve Güvenlik`:** Yerel depolama, izin minimizasyonu, sıfır reklam/izleyici prensipleri.
+12. **`## ⚖️ Yasal Uyarı ve Sorumluluk Reddi`:** `> [!IMPORTANT]` bloğu içinde sorumluluk reddi beyanı.
+13. **`## 👨‍💻 Geliştirici ve İletişim`:**
+    - **Cevdet Karakulak** / *Junior Full Stack Developer* / `floppatechcorp@gmail.com` ve en altta ortalanmış (`<p align="center"><sub>...</sub></p>`) slogan.
