@@ -1,6 +1,10 @@
 # 📈 PiyasaRadarı (PiyasaTakipApp) – Canlı Finans & Piyasa Takip Platformu
 ### **BIST 100 Hisseleri, Canlı Döviz, Altın, Kripto, Akaryakıt Fiyatları, Portföy Yönetimi ve Cloudflare Edge Cache Destekli Modern Finans Uygulaması (React Native + Expo SDK 57 + TypeScript + Zustand + Cloudflare Workers)**
 
+<p align="center">
+  <img src="docs/assets/banner.png" alt="PiyasaRadarı Banner" width="100%" />
+</p>
+
 ---
 
 ## 🚀 Proje Hakkında
@@ -117,15 +121,15 @@ Uygulamanın arkasında çalışan `cloudflare-worker` mikroservisi, mobil uygul
 
 ## 📸 Ekran Görüntüleri
 
-| **01. Canlı Piyasa & Ticker** | **02. Detaylı Grafik & Hisse Analizi** | **03. Portföy & Kâr/Zarar Takibi** |
+| **01. Canlı Piyasalar & Ticker** | **02. Varlık Portföyü & Kâr/Zarar** | **03. 81 İl Akaryakıt Fiyatları** |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/01-Piyasa.png" width="300" alt="Piyasa"/> | <img src="docs/screenshots/02-Grafik-Detay.png" width="300" alt="Grafik"/> | <img src="docs/screenshots/03-Portfoy.png" width="300" alt="Portföy"/> |
+| <img src="docs/screenshots/01-Piyasalar.png" width="300" alt="Canlı Piyasalar"/> | <img src="docs/screenshots/02-Portfoy.png" width="300" alt="Varlık Portföyü"/> | <img src="docs/screenshots/03-Akaryakit.png" width="300" alt="81 İl Akaryakıt"/> |
 
 <br>
 
-| **04. Döviz & Altın Çevirici** | **05. İl Bazlı Akaryakıt Fiyatları** | **06. Finans & Borsa Haberleri** |
+| **04. Döviz & Altın Çevirici** | **05. Ekonomi Gündemi & Haberler** | **06. Ayarlar & Tercihler** |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/04-Cevirici.png" width="300" alt="Çevirici"/> | <img src="docs/screenshots/05-Akaryakit.png" width="300" alt="Akaryakıt"/> | <img src="docs/screenshots/06-Haberler.png" width="300" alt="Haberler"/> |
+| <img src="docs/screenshots/04-Cevirici.png" width="300" alt="Döviz ve Altın Çevirici"/> | <img src="docs/screenshots/05-Haberler.png" width="300" alt="Piyasa Haberleri"/> | <img src="docs/screenshots/06-Ayarlar.png" width="300" alt="Ayarlar ve Hesap"/> |
 
 ---
 
