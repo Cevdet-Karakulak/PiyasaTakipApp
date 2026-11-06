@@ -22,6 +22,7 @@ const KARAT_22_PURITY = 0.9166;
 
 export const GOLD_SPECS = {
   gram: { weightGrams: 1, purity: 1 },
+  ayar22: { weightGrams: 1, purity: KARAT_22_PURITY },
   ceyrek: { weightGrams: 1.754, purity: KARAT_22_PURITY },
   yarim: { weightGrams: 3.508, purity: KARAT_22_PURITY },
   tam: { weightGrams: 7.016, purity: KARAT_22_PURITY },
@@ -36,6 +37,7 @@ export type GoldPrices = Record<GoldType, number>;
 /** Shared by quote generation and history so new gold types cannot be omitted. */
 export const GOLD_SYMBOL_TO_TYPE: Record<GoldSymbol, GoldType> = {
   GRAM_ALTIN: 'gram',
+  AYAR22_ALTIN: 'ayar22',
   CEYREK_ALTIN: 'ceyrek',
   YARIM_ALTIN: 'yarim',
   TAM_ALTIN: 'tam',
@@ -70,6 +72,7 @@ export function calculateGoldPrices(
 
   return {
     gram: priceOf('gram'),
+    ayar22: priceOf('ayar22'),
     ceyrek: priceOf('ceyrek'),
     yarim: priceOf('yarim'),
     tam: priceOf('tam'),

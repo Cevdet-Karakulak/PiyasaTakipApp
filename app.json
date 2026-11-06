@@ -2,14 +2,14 @@
   "expo": {
     "name": "PiyasaRadarı",
     "slug": "piyasaradari",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "piyasaradari",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.cevdet.piyasaradari",
-      "buildNumber": "5",
+      "buildNumber": "15",
       "icon": "./assets/images/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.cevdet.piyasaradari",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "backgroundColor": "#0B0E14",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

@@ -65,12 +65,13 @@ export const YAHOO_SYMBOLS: YahooSymbol[] = [
   'EKGYO.IS',
 ];
 
-export const GOLD_SYMBOLS: GoldSymbol[] = ['GRAM_ALTIN', 'CEYREK_ALTIN', 'YARIM_ALTIN', 'TAM_ALTIN', 'CUMHURIYET_ALTINI'];
+export const GOLD_SYMBOLS: GoldSymbol[] = ['GRAM_ALTIN', 'AYAR22_ALTIN', 'CEYREK_ALTIN', 'YARIM_ALTIN', 'TAM_ALTIN', 'CUMHURIYET_ALTINI'];
 
 export const ASSET_DISPLAY_ORDER: MarketSymbol[] = [
   'USDTRY=X',
   'EURTRY=X',
   'GRAM_ALTIN',
+  'AYAR22_ALTIN',
   'CEYREK_ALTIN',
   'YARIM_ALTIN',
   'TAM_ALTIN',
@@ -110,6 +111,14 @@ export const ASSETS: Record<MarketSymbol, AssetDefinition> = {
   'USDTRY=X': { symbol: 'USDTRY=X', name: 'Dolar / TL', shortName: 'USD/TRY', category: 'currency', currency: 'TRY', decimals: 4 },
   'EURTRY=X': { symbol: 'EURTRY=X', name: 'Euro / TL', shortName: 'EUR/TRY', category: 'currency', currency: 'TRY', decimals: 4 },
   GRAM_ALTIN: { symbol: 'GRAM_ALTIN', name: 'Gram Altın', shortName: 'GRAM ALTIN', category: 'gold', currency: 'TRY', decimals: 2 },
+  AYAR22_ALTIN: {
+    symbol: 'AYAR22_ALTIN',
+    name: '22 Ayar Bilezik (Gram)',
+    shortName: '22 AYAR',
+    category: 'gold',
+    currency: 'TRY',
+    decimals: 2,
+  },
   CEYREK_ALTIN: { symbol: 'CEYREK_ALTIN', name: 'Çeyrek Altın', shortName: 'ÇEYREK', category: 'gold', currency: 'TRY', decimals: 2 },
   YARIM_ALTIN: { symbol: 'YARIM_ALTIN', name: 'Yarım Altın (Ziynet)', shortName: 'YARIM', category: 'gold', currency: 'TRY', decimals: 2 },
   TAM_ALTIN: { symbol: 'TAM_ALTIN', name: 'Tam Altın (Ziynet)', shortName: 'TAM', category: 'gold', currency: 'TRY', decimals: 2 },
@@ -154,6 +163,7 @@ export const TRUNCGIL_KEY_MAP: Partial<Record<MarketSymbol, string>> = {
   'BZ=F': 'BRENT',
   'XU100.IS': 'XU100',
   GRAM_ALTIN: 'GRA',
+  AYAR22_ALTIN: 'YIA',
   CEYREK_ALTIN: 'CEYREKALTIN',
   YARIM_ALTIN: 'YARIMALTIN',
   TAM_ALTIN: 'TAMALTIN',

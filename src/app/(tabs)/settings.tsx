@@ -49,7 +49,7 @@ import { usePortfolioStore } from '@/store/portfolioStore';
 import { useTranslation } from '@/store/preferencesStore';
 import type { Language, ThemeMode } from '@/types/preferences';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 const SUPPORT_EMAIL = 'destek@floppatech.com';
 
 type SheetType =
@@ -494,7 +494,7 @@ export default function SettingsScreen() {
   const storeUrl =
     Platform.OS === 'android'
       ? 'https://play.google.com/store/apps/details?id=com.cevdet.piyasaradari'
-      : 'https://apps.apple.com/app/id6819800328';
+      : 'https://apps.apple.com/app/id6823244806';
 
   const shareText = `${t('PiyasaRadarı · Canlı Borsa, Döviz ve Finans Takibi')}\n${t(
     'Borsa, altın, döviz ve akaryakıt fiyatlarını tek ekrandan takip et: '
@@ -526,7 +526,7 @@ export default function SettingsScreen() {
     const url =
       Platform.OS === 'android'
         ? 'market://details?id=com.cevdet.piyasaradari'
-        : `${storeUrl}?action=write-review`;
+        : 'itms-apps://itunes.apple.com/app/id6823244806?action=write-review';
     Linking.openURL(url).catch(() => {
       Linking.openURL(storeUrl).catch(() => {
         setSheet('rate');
@@ -873,6 +873,39 @@ export default function SettingsScreen() {
         <Text style={[styles.h2, { color: colors.text, marginTop: 6 }]}>
           {t('Destek ve Paylaşım')}
         </Text>
+
+        {/* Özel Mağaza Puanlama Kartı */}
+        <Card colors={colors} style={styles.rateCardContainer}>
+          <View style={styles.rateCardHeader}>
+            <View style={[styles.rateCardBadge, { backgroundColor: colors.gold + '22' }]}>
+              <Star size={22} color={colors.gold} fill={colors.gold} />
+            </View>
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: colors.text }}>
+                {t('PiyasaRadarı’nı Beğendiniz mi?')}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, lineHeight: 17 }}>
+                {Platform.OS === 'android'
+                  ? t('Google Play Store’da 5 yıldız vererek bağımsız projemize destek olabilirsiniz.')
+                  : t('App Store’da 5 yıldız vererek bağımsız projemize destek olabilirsiniz.')}
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('Uygulamayı Değerlendir')}
+            onPress={handleRateApp}
+            style={({ pressed }) => [
+              styles.rateActionBtn,
+              { backgroundColor: colors.accent, opacity: pressed ? 0.85 : 1 },
+            ]}
+          >
+            <Star size={16} color="#FFFFFF" fill="#FFFFFF" />
+            <Text style={styles.rateActionBtnText}>
+              {t('Uygulamayı Değerlendir')}
+            </Text>
+          </Pressable>
+        </Card>
 
         <Menu
           title="Paylaş"
@@ -1818,5 +1851,35 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     textAlign: 'center',
     fontWeight: '600',
+  },
+  rateCardContainer: {
+    padding: 16,
+    gap: 14,
+    borderRadius: 16,
+  },
+  rateCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rateCardBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rateActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: 11,
+  },
+  rateActionBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

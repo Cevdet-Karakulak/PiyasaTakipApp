@@ -38,7 +38,7 @@ export type KnownYahooSymbol =
 /** Dinamik BIST 500 hisselerini de (SASA.IS, HEKTS.IS vb.) kabul eden açık sembol tipi */
 export type YahooSymbol = KnownYahooSymbol | (string & {});
 
-export type GoldSymbol = 'GRAM_ALTIN' | 'CEYREK_ALTIN' | 'YARIM_ALTIN' | 'TAM_ALTIN' | 'CUMHURIYET_ALTINI';
+export type GoldSymbol = 'GRAM_ALTIN' | 'AYAR22_ALTIN' | 'CEYREK_ALTIN' | 'YARIM_ALTIN' | 'TAM_ALTIN' | 'CUMHURIYET_ALTINI';
 
 export type MarketSymbol = YahooSymbol | GoldSymbol;
 

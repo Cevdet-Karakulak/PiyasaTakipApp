@@ -17,7 +17,7 @@ on:
       build_number:
         description: 'App Store / Play Store için yeni ve benzersiz bir derleme (build) numarası girin (Örn: 5, 6, 7)'
         required: false
-        default: '5'
+        default: '6'
         type: string
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS: '1'
-      BUILD_NUM: ${{ inputs.build_number || '5' }}
+      BUILD_NUM: ${{ inputs.build_number || '6' }}
     steps:
       - name: Kodu Çek
         uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS: '1'
-      BUILD_NUM: ${{ inputs.build_number || '5' }}
+      BUILD_NUM: ${{ inputs.build_number || '6' }}
       ORG_GRADLE_PROJECT_reactNativeArchitectures: 'armeabi-v7a,arm64-v8a'
       ORG_GRADLE_PROJECT_org.gradle.caching: 'true'
       ORG_GRADLE_PROJECT_org.gradle.parallel: 'true'

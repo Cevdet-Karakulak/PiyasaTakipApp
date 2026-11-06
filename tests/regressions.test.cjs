@@ -151,6 +151,8 @@ test('all gold types are registered for market list, data and history', () => {
 test('half/full ziynet and Ata have distinct Darphane weights and theoretical values', () => {
   const { calculateGoldPrices, GOLD_SPECS } = require('../src/utils/goldCalculator.ts');
   const values = calculateGoldPrices(3110.34768, 30);
+  assert.equal(GOLD_SPECS.ayar22.weightGrams, 1); assert.equal(GOLD_SPECS.ayar22.purity, 0.9166);
+  assert.ok(Math.abs(values.ayar22 - values.gram * 0.9166) < 1e-8);
   assert.equal(GOLD_SPECS.yarim.weightGrams, 3.508); assert.equal(GOLD_SPECS.tam.weightGrams, 7.016);
   assert.equal(GOLD_SPECS.cumhuriyet.weightGrams, 7.216); assert.equal(GOLD_SPECS.yarim.purity, 0.9166);
   assert.ok(Math.abs(values.yarim - values.ceyrek * 2) < 1e-8);
@@ -168,7 +170,7 @@ test('gold quote fallback creates separate half/full entries and matches chart c
     assert.equal(quote.currency, 'TRY'); assert.equal(quote.price, history[0].value);
     assert.ok(quote.previousClose > 0);
   }
-  assert.ok(quotes.YARIM_ALTIN); assert.ok(quotes.TAM_ALTIN);
+  assert.ok(quotes.YARIM_ALTIN); assert.ok(quotes.TAM_ALTIN); assert.ok(quotes.AYAR22_ALTIN);
   assert.deepEqual(buildGoldQuotes(undefined, q(30, 29)), {});
 });
 test('half/full Truncgil values are separate; missing values never become another gold type', () => {

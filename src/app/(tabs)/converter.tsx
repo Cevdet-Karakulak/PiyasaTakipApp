@@ -53,6 +53,13 @@ const CONVERTER_ITEMS: ConversionAsset[] = [
     getTryRate: (quotes) => quotes['GRAM_ALTIN']?.price ?? null,
   },
   {
+    id: 'AYAR22_ALTIN',
+    name: '22 Ayar Bilezik (Gram)',
+    shortName: '22 AYAR',
+    symbolRef: 'AYAR22_ALTIN',
+    getTryRate: (quotes) => quotes['AYAR22_ALTIN']?.price ?? null,
+  },
+  {
     id: 'CEYREK_ALTIN',
     name: 'Çeyrek Altın',
     shortName: 'ÇEYREK',
