@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.cevdet.piyasaradari",
-      "versionCode": 6,
+      "versionCode": 15,
       "adaptiveIcon": {
         "backgroundColor": "#0B0E14",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

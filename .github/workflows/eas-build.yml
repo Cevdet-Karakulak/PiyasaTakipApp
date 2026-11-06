@@ -15,9 +15,9 @@ on:
           - ios
           - android
       build_number:
-        description: 'App Store / Play Store için yeni ve benzersiz bir derleme (build) numarası girin (Örn: 5, 6, 7)'
+        description: 'App Store / Play Store için yeni ve benzersiz bir derleme (build) numarası girin (Örn: 15, 16, 17)'
         required: false
-        default: '6'
+        default: '15'
         type: string
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS: '1'
-      BUILD_NUM: ${{ inputs.build_number || '6' }}
+      BUILD_NUM: ${{ inputs.build_number || '15' }}
     steps:
       - name: Kodu Çek
         uses: actions/checkout@v4
@@ -58,12 +58,12 @@ jobs:
           const file = 'app.json';
           if (fs.existsSync(file)) {
             const config = JSON.parse(fs.readFileSync(file));
-            const buildNum = process.env.BUILD_NUM || '5';
+            const buildNum = process.env.BUILD_NUM || '15';
             if (config.expo) {
               if (!config.expo.ios) config.expo.ios = {};
               config.expo.ios.buildNumber = String(buildNum);
               if (!config.expo.android) config.expo.android = {};
-              config.expo.android.versionCode = parseInt(buildNum, 10) || 5;
+              config.expo.android.versionCode = parseInt(buildNum, 10) || 15;
             }
             fs.writeFileSync(file, JSON.stringify(config, null, 2));
             console.log('iOS Build number güncellendi:', buildNum);
@@ -76,7 +76,7 @@ jobs:
       - name: iOS IPA Dosyasını GitHub'a Yükle (Artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: PiyasaRadari-ios-${{ inputs.build_number || '5' }}
+          name: PiyasaRadari-ios-${{ inputs.build_number || '15' }}
           path: ./PiyasaRadari.ipa
           retention-days: 7
 
@@ -86,7 +86,7 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS: '1'
-      BUILD_NUM: ${{ inputs.build_number || '6' }}
+      BUILD_NUM: ${{ inputs.build_number || '15' }}
       ORG_GRADLE_PROJECT_reactNativeArchitectures: 'armeabi-v7a,arm64-v8a'
       ORG_GRADLE_PROJECT_org.gradle.caching: 'true'
       ORG_GRADLE_PROJECT_org.gradle.parallel: 'true'
@@ -138,12 +138,12 @@ jobs:
           const file = 'app.json';
           if (fs.existsSync(file)) {
             const config = JSON.parse(fs.readFileSync(file));
-            const buildNum = process.env.BUILD_NUM || '5';
+            const buildNum = process.env.BUILD_NUM || '15';
             if (config.expo) {
               if (!config.expo.ios) config.expo.ios = {};
               config.expo.ios.buildNumber = String(buildNum);
               if (!config.expo.android) config.expo.android = {};
-              config.expo.android.versionCode = parseInt(buildNum, 10) || 5;
+              config.expo.android.versionCode = parseInt(buildNum, 10) || 15;
             }
             fs.writeFileSync(file, JSON.stringify(config, null, 2));
             console.log('Android versionCode güncellendi:', buildNum);
@@ -156,7 +156,7 @@ jobs:
       - name: Android AAB Dosyasını GitHub'a Yükle (Artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: PiyasaRadari-android-${{ inputs.build_number || '5' }}
+          name: PiyasaRadari-android-${{ inputs.build_number || '15' }}
           path: ./PiyasaRadari.aab
           retention-days: 7
 
