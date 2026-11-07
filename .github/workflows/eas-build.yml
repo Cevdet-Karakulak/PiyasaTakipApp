@@ -51,6 +51,9 @@ jobs:
       - name: Paketleri Yükle
         run: npm install
 
+      - name: Swift & iOS Toolchain Yamalarını Uygula
+        run: node scripts/patch-ios-swift.js
+
       - name: Build Numarasını app.json İçine Enjekte Et
         run: |
           node -e "
@@ -79,6 +82,10 @@ jobs:
           name: PiyasaRadari-ios-${{ inputs.build_number || '16' }}
           path: ./PiyasaRadari.ipa
           retention-days: 7
+
+      - name: App Store Connect'e Gönder (EAS Submit)
+        continue-on-error: true
+        run: npx --yes eas-cli@latest submit --platform ios --profile production --path ./PiyasaRadari.ipa --non-interactive
 
   build-android:
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.platform == 'both' || inputs.platform == 'android') }}
@@ -130,6 +137,9 @@ jobs:
 
       - name: Paketleri Yükle
         run: npm install
+
+      - name: Swift & iOS Toolchain Yamalarını Uygula
+        run: node scripts/patch-ios-swift.js
 
       - name: Build Numarasını app.json İçine Enjekte Et
         run: |
