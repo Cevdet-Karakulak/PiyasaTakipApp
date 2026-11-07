@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Image,
@@ -40,6 +40,8 @@ import {
   UserPlus,
   X,
 } from 'lucide-react-native';
+
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { useThemeColors, type ThemeColors } from '@/constants/fintechTheme';
 import { useAuthStore } from '@/store/authStore';
@@ -359,6 +361,7 @@ export default function SettingsScreen() {
   const registerWithEmail = useAuthStore((s) => s.registerWithEmail);
   const loginWithEmail = useAuthStore((s) => s.loginWithEmail);
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
+  const loginWithApple = useAuthStore((s) => s.loginWithApple);
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const resetPassword = useAuthStore((s) => s.resetPassword);
   const logout = useAuthStore((s) => s.logout);
@@ -407,6 +410,53 @@ export default function SettingsScreen() {
   };
 
   /* ---- AUTH İŞLEMLERİ ---- */
+
+  const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(Platform.OS === 'ios');
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setIsAppleAuthAvailable);
+    }
+  }, []);
+
+  const isDarkTheme = colors.background !== '#F8FAFC';
+  const appleButtonStyle = isDarkTheme
+    ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+    : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK;
+
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const givenName = credential.fullName?.givenName || '';
+      const familyName = credential.fullName?.familyName || '';
+      const name = [givenName, familyName].filter(Boolean).join(' ') || 'Apple Kullanıcısı';
+      const email = credential.email || `${credential.user.slice(0, 8)}@privaterelay.appleid.com`;
+
+      const res = loginWithApple({
+        id: credential.user,
+        name,
+        email,
+      });
+
+      if (res.ok) {
+        showNotice(t('Hoş geldiniz! Apple ile giriş başarılı.'));
+        closeSheet();
+      } else {
+        showNotice(t(res.error || 'Giriş yapılamadı.'));
+      }
+    } catch (e: any) {
+      if (e.code === 'ERR_REQUEST_CANCELED') {
+        return;
+      }
+      showNotice(t('Apple ile giriş işlemi tamamlanamadı.'));
+    }
+  };
 
   const openEmailAuth = (initialMode: EmailAuthMode = 'login') => {
     setEmailMode(initialMode);
@@ -703,7 +753,11 @@ export default function SettingsScreen() {
                       styles.providerBadge,
                       {
                         backgroundColor:
-                          user.provider === 'google' ? colors.goldSoft : colors.accentSoft,
+                          user.provider === 'apple'
+                            ? colors.surfaceHighlight
+                            : user.provider === 'google'
+                            ? colors.goldSoft
+                            : colors.accentSoft,
                       },
                     ]}
                   >
@@ -711,10 +765,19 @@ export default function SettingsScreen() {
                       style={{
                         fontSize: 11,
                         fontWeight: '700',
-                        color: user.provider === 'google' ? colors.gold : colors.accent,
+                        color:
+                          user.provider === 'apple'
+                            ? colors.text
+                            : user.provider === 'google'
+                            ? colors.gold
+                            : colors.accent,
                       }}
                     >
-                      {user.provider === 'google' ? t('Google Hesabı') : t('E-posta Hesabı')}
+                      {user.provider === 'apple'
+                        ? t('Apple Hesabı')
+                        : user.provider === 'google'
+                        ? t('Google Hesabı')
+                        : t('E-posta Hesabı')}
                     </Text>
                   </View>
                 </View>
@@ -771,6 +834,17 @@ export default function SettingsScreen() {
             </View>
 
             <View style={{ gap: 10 }}>
+              {/* Apple ile Giriş Yap (Guideline 4.8 Uyumluluğu) */}
+              {(isAppleAuthAvailable || Platform.OS === 'ios') && (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={appleButtonStyle}
+                  cornerRadius={12}
+                  style={{ width: '100%', height: 48 }}
+                  onPress={handleAppleSignIn}
+                />
+              )}
+
               {/* Google ile Kaydol / Giriş Yap */}
               <Pressable
                 accessibilityRole="button"
@@ -1163,6 +1237,16 @@ export default function SettingsScreen() {
                     )}
 
                     <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+
+                    {(isAppleAuthAvailable || Platform.OS === 'ios') && (
+                      <AppleAuthentication.AppleAuthenticationButton
+                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                        buttonStyle={appleButtonStyle}
+                        cornerRadius={12}
+                        style={{ width: '100%', height: 46, marginBottom: 8 }}
+                        onPress={handleAppleSignIn}
+                      />
+                    )}
 
                     <Pressable
                       onPress={openGoogleAuth}

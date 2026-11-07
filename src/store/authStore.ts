@@ -14,7 +14,7 @@ const noopStorage: StateStorage = {
 const getStorage = (): StateStorage =>
   Platform.OS === 'web' && typeof window === 'undefined' ? noopStorage : AsyncStorage;
 
-export type AuthProviderType = 'google' | 'email';
+export type AuthProviderType = 'google' | 'email' | 'apple';
 
 export interface AuthUser {
   id: string;
@@ -40,6 +40,7 @@ export interface AuthState {
   registerWithEmail: (name: string, email: string, password: string) => AuthActionResult;
   loginWithEmail: (email: string, password: string) => AuthActionResult;
   loginWithGoogle: (profile?: { name?: string; email?: string }) => AuthActionResult;
+  loginWithApple: (profile?: { id?: string; name?: string; email?: string }) => AuthActionResult;
   updateProfile: (name: string) => AuthActionResult;
   resetPassword: (email: string, newPassword: string) => AuthActionResult;
   logout: () => void;
@@ -180,6 +181,43 @@ export const useAuthStore = create<AuthState>()(
           name: cleanName,
           email: cleanEmail,
           provider: 'google',
+          createdAt: new Date().toISOString(),
+        };
+
+        set({
+          accounts: [...get().accounts, newAccount],
+          user: newAccount,
+        });
+        return { ok: true };
+      },
+
+      loginWithApple: (profile) => {
+        const cleanEmail = (profile?.email || 'kullanici@privaterelay.appleid.com').trim().toLowerCase();
+        const cleanName = (profile?.name || 'Apple Kullanıcısı').trim();
+        const appleId = profile?.id || `apl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+        const existing = get().accounts.find(
+          (acc) => (acc.provider === 'apple' && acc.id === appleId) || acc.email.toLowerCase() === cleanEmail
+        );
+
+        if (existing) {
+          const updated: StoredAccount = {
+            ...existing,
+            name: cleanName || existing.name,
+          };
+          const { passwordHash: _, ...publicUser } = updated;
+          set({
+            accounts: get().accounts.map((a) => (a.id === existing.id ? updated : a)),
+            user: publicUser,
+          });
+          return { ok: true };
+        }
+
+        const newAccount: StoredAccount = {
+          id: appleId,
+          name: cleanName,
+          email: cleanEmail,
+          provider: 'apple',
           createdAt: new Date().toISOString(),
         };
 

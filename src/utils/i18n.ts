@@ -51,6 +51,10 @@ Google Hesabı ile Bağlan|||Connect with Google Account
 Google hesabınızı seçin veya Gmail adresinizle devam edin.|||Select your Google account or continue with your Gmail address.
 Google ile Bağlan|||Connect with Google
 Google Hesabı|||Google Account
+Apple Hesabı|||Apple Account
+Apple ile Giriş Yap|||Sign in with Apple
+Hoş geldiniz! Apple ile giriş başarılı.|||Welcome! Signed in with Apple.
+Apple ile giriş işlemi tamamlanamadı.|||Could not complete Apple sign in.
 E-posta Hesabı|||Email Account
 Hoş geldiniz! Giriş başarılı.|||Welcome! Signed in successfully.
 Hesabınız başarıyla oluşturuldu.|||Your account has been created successfully.
