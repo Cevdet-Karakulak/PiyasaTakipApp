@@ -98,10 +98,13 @@ function fixInvalidSwiftSyntax(dir) {
       try {
         let content = fs.readFileSync(fullPath, 'utf8');
         let changed = false;
-        if (content.includes('weak let')) {
+        if (content.includes('weak let') || content.includes('weak var runtime') || content.includes('weak let runtime')) {
           content = content.replace(/\bweak\s+let\b/g, 'weak var');
+          content = content.replace(/(?:nonisolated\(unsafe\)\s+)?(?:(private|internal|public)\s+)?(?:nonisolated\(unsafe\)\s+)?weak\s+var\s+runtime\s*:/g, (match, access) => {
+            return `nonisolated(unsafe) ${access ? access + ' ' : ''}weak var runtime:`;
+          });
           changed = true;
-          console.log('[patch-ios-swift] Fixed weak let -> weak var in:', fullPath);
+          console.log('[patch-ios-swift] Patched weak var runtime for Sendable Swift 6 concurrency in:', fullPath);
         }
         if (/,\s*\)/.test(content)) {
           content = content.replace(/,\s*\)/g, ')');
