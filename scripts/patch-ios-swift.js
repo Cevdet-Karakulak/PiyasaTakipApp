@@ -82,6 +82,47 @@ function patchPackageSwift(dir) {
 const nodeModulesDir = path.resolve(__dirname, '..', 'node_modules');
 patchPackageSwift(nodeModulesDir);
 
+// 1.1 Unconditionally fix invalid Swift syntax across all node_modules & ios Swift files:
+// - 'weak let' -> 'weak var' ('weak' must be a mutable variable, because it may change at runtime)
+// - Trailing commas before ')' in parameter lists and signatures ('unexpected \',\' separator')
+function fixInvalidSwiftSyntax(dir) {
+  if (!fs.existsSync(dir)) return;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== '.git') {
+        fixInvalidSwiftSyntax(fullPath);
+      }
+    } else if (entry.name.endsWith('.swift')) {
+      try {
+        let content = fs.readFileSync(fullPath, 'utf8');
+        let changed = false;
+        if (content.includes('weak let')) {
+          content = content.replace(/\bweak\s+let\b/g, 'weak var');
+          changed = true;
+          console.log('[patch-ios-swift] Fixed weak let -> weak var in:', fullPath);
+        }
+        if (/,\s*\)/.test(content)) {
+          content = content.replace(/,\s*\)/g, ')');
+          changed = true;
+          console.log('[patch-ios-swift] Stripped trailing comma before ) in:', fullPath);
+        }
+        if (changed) {
+          fs.writeFileSync(fullPath, content, 'utf8');
+        }
+      } catch (err) {
+        console.warn('[patch-ios-swift] Could not patch ' + fullPath + ':', err.message);
+      }
+    }
+  }
+}
+fixInvalidSwiftSyntax(nodeModulesDir);
+const iosDirCheck = path.resolve(__dirname, '..', 'ios');
+if (fs.existsSync(iosDirCheck)) {
+  fixInvalidSwiftSyntax(iosDirCheck);
+}
+
 // 2. Patch JavaScriptObject.swift in expo-modules-jsi
 const jsObjPath = path.resolve(
   nodeModulesDir,
