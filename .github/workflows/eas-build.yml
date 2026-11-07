@@ -32,6 +32,16 @@ jobs:
       - name: Kodu Çek
         uses: actions/checkout@v4
 
+      - name: En Son Xcode Sürümünü Seç (Xcode 26+ / iOS 26 SDK)
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$LATEST_XCODE" ]; then
+            echo "Selecting Xcode: $LATEST_XCODE"
+            sudo xcode-select -switch "$LATEST_XCODE"
+            echo "DEVELOPER_DIR=$LATEST_XCODE/Contents/Developer" >> $GITHUB_ENV
+          fi
+          xcodebuild -version
+
       - name: Node.js Kurulumu (NPM Önbellekli)
         uses: actions/setup-node@v4
         with:

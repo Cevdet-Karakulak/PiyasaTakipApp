@@ -126,6 +126,48 @@ if (fs.existsSync(iosDirCheck)) {
   fixInvalidSwiftSyntax(iosDirCheck);
 }
 
+// 1.2 Patch expo-router Toolbar for universal SDK & toolchain compatibility
+function patchExpoRouterToolbar(dir) {
+  const routerToolbarDir = path.resolve(dir, 'expo-router', 'ios', 'Toolbar');
+  if (!fs.existsSync(routerToolbarDir)) return;
+  
+  const itemView = path.join(routerToolbarDir, 'RouterToolbarItemView.swift');
+  if (fs.existsSync(itemView)) {
+    let content = fs.readFileSync(itemView, 'utf8');
+    if (content.includes('item.hidesSharedBackground = hidesSharedBackground') || content.includes('item.badge = badge')) {
+      content = content.replace(/item\.hidesSharedBackground\s*=\s*hidesSharedBackground/g, '// item.hidesSharedBackground');
+      content = content.replace(/item\.sharesBackground\s*=\s*sharesBackground/g, '// item.sharesBackground');
+      content = content.replace(/item\.badge\s*=\s*badge/g, '// item.badge');
+      content = content.replace(/item\.badge\s*=\s*nil/g, '// item.badge = nil');
+      content = content.replace(/item = controller\.navigationItem\.searchBarPlacementBarButtonItem/g, 'item = UIBarButtonItem()');
+      fs.writeFileSync(itemView, content, 'utf8');
+      console.log('[patch-ios-swift] Patched RouterToolbarItemView.swift for universal SDK compatibility!');
+    }
+  }
+
+  const hostView = path.join(routerToolbarDir, 'RouterToolbarHostView.swift');
+  if (fs.existsSync(hostView)) {
+    let content = fs.readFileSync(hostView, 'utf8');
+    if (content.includes('item.hidesSharedBackground = hidesSharedBackground')) {
+      content = content.replace(/item\.hidesSharedBackground\s*=\s*hidesSharedBackground/g, '// item.hidesSharedBackground');
+      content = content.replace(/item\.sharesBackground\s*=\s*sharesBackground/g, '// item.sharesBackground');
+      fs.writeFileSync(hostView, content, 'utf8');
+      console.log('[patch-ios-swift] Patched RouterToolbarHostView.swift for universal SDK compatibility!');
+    }
+  }
+
+  const moduleView = path.join(routerToolbarDir, 'RouterToolbarModule.swift');
+  if (fs.existsSync(moduleView)) {
+    let content = fs.readFileSync(moduleView, 'utf8');
+    if (content.includes('return .prominent')) {
+      content = content.replace(/return\s+\.prominent/g, 'return .done');
+      fs.writeFileSync(moduleView, content, 'utf8');
+      console.log('[patch-ios-swift] Patched RouterToolbarModule.swift for universal SDK compatibility!');
+    }
+  }
+}
+patchExpoRouterToolbar(nodeModulesDir);
+
 // 2. Patch JavaScriptObject.swift in expo-modules-jsi
 const jsObjPath = path.resolve(
   nodeModulesDir,
